@@ -1,0 +1,139 @@
+<?php
+/**
+ * @file
+ * Contains hook and methods for the Stripe API module.
+ */
+
+module_load_include('inc', 'stripe_api', 'stripe_api.methods');
+
+/**
+ * Implements hook_menu().
+ */
+function stripe_api_menu() {
+  $items['admin/config/services/stripe_api'] = array(
+    'type' => MENU_NORMAL_ITEM,
+    'title' => 'Stripe API Settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('stripe_api_admin_settings_form'),
+    'file' => 'stripe_api.admin.inc',
+    'access arguments' => array('edit stripe api settings'),
+    'description' => 'Edit Stripe API credentials.',
+  );
+  $items['stripe/webhook'] = array(
+    'type' => MENU_CALLBACK,
+    'access callback' => TRUE,
+    'page callback' => '_stripe_api_process_incoming_webhook',
+  );
+  return $items;
+}
+
+/**
+ * Processes incoming Stripe webhooks.
+ */
+function _stripe_api_process_incoming_webhook() {
+  $input = file_get_contents("php://input");
+  $event_json = json_decode($input);
+  $event = NULL;
+
+  // Validate the webhook if we are in LIVE mode.
+  if (variable_get('stripe_api_mode', 'test') === 'live' && ($event_json->livemode == TRUE || $event_json->id !== 'evt_00000000000000')) {
+    $event = stripe_api_call('event', 'retrieve', $event_json->id);
+    if (!$event) {
+      watchdog('stripe_api', 'Invalid webhook event: @data', array(
+        '@data' => $input,
+      ), WATCHDOG_ERROR);
+      // This webhook event is invalid.
+      drupal_add_http_header('Status', '403 Forbidden');
+      print 'Forbidden';
+      exit;
+    }
+  }
+
+  // Invoke webhooks for others to use.
+  module_invoke_all('stripe_api_webhook', $event_json->type, $event_json->data, $event);
+  module_invoke_all('stripe_api_webhook_' . str_replace('.', '_', $event_json->type), $event_json->data, $event);
+  print 'okay';
+}
+
+/**
+ * Implements hook_stripe_api_webhook().
+ *
+ * Log incoming webhooks.
+ */
+function stripe_api_stripe_api_webhook($type, $data, Stripe\Event $event = NULL) {
+  if (variable_get('stripe_api_log_webhooks', TRUE)) {
+    watchdog('stripe_api', 'Processed webhook: @name<br /><br />Data: @data', array(
+      '@name' => $type,
+      '@data' => json_encode($data),
+    ), WATCHDOG_INFO);
+  }
+}
+
+/**
+ * Implements hook_libraries_info().
+ */
+function stripe_api_libraries_info() {
+  $libraries['stripe-php'] = array(
+    'name' => 'Stripe Payment API PHP Library',
+    'vendor url' => 'https://github.com/stripe/stripe-php',
+    'download url' => 'https://github.com/stripe/stripe-php/archive/master.zip',
+    'version arguments' => array(
+      'file' => 'VERSION',
+      'pattern' => '/([0-9a-zA-Z\.-]+)/',
+      'lines' => 1,
+    ),
+    'files' => array('php' => array('init.php')),
+    'callbacks' => array('post-load' => array('stripe_api_libraries_postload_callback')),
+  );
+  return $libraries;
+}
+
+/**
+ * Post-load callback for the Stripe PHP Library.
+ *
+ * @param array $library
+ *   An array of library information.
+ * @param string $version
+ *   If the $library array belongs to a certain version, a string containing the
+ *   version.
+ * @param string $variant
+ *   If the $library array belongs to a certain variant, a string containing the
+ *   variant name.
+ */
+function stripe_api_libraries_postload_callback($library, $version = NULL, $variant = NULL) {
+  if (!empty($library['loaded'])) {
+    \Stripe\Stripe::setApiKey(_stripe_api_secret_key());
+  }
+}
+
+/**
+ * Returns the Stripe API secret key.
+ *
+ * @param string $mode
+ *   Stripe mode, either 'live' or 'test'. Leave blank to use the active mode.
+ *
+ * @return string
+ *   Returns the secret key.
+ */
+function _stripe_api_secret_key($mode = '') {
+  if (!$mode) {
+    $mode = variable_get('stripe_api_mode');
+  }
+  return variable_get('stripe_api_' . $mode . '_secret_key');
+}
+
+/**
+ * Returns the Stripe API public key.
+ *
+ * @param string $mode
+ *   Stripe mode, either 'live' or 'test'. Leave blank to use the active mode.
+ *
+ * @return string
+ *   Returns the public key.
+ */
+function _stripe_api_public_key($mode = '') {
+  if (!$mode) {
+    $mode = variable_get('stripe_api_mode');
+  }
+  return variable_get('stripe_api_' . $mode . '_public_key');
+}
