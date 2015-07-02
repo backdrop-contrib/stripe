@@ -73,7 +73,7 @@ function stripe_api_stripe_api_webhook($type, $data, Stripe\Event $event = NULL)
  * Implements hook_libraries_info().
  */
 function stripe_api_libraries_info() {
-  $libraries['stripe-php'] = array(
+  $libraries['stripe'] = array(
     'name' => 'Stripe Payment API PHP Library',
     'vendor url' => 'https://github.com/stripe/stripe-php',
     'download url' => 'https://github.com/stripe/stripe-php/archive/master.zip',
