@@ -28,24 +28,24 @@ function stripe_api_drush_command() {
     'description' => "Make a Stripe API call.",
     'arguments' => array(
       'object' => 'Stripe object, such as customer, account, subscription, etc...',
-      'method' => 'Object method to call, such as retrieve, create, all.',
+      'method' => 'Object method to call, su"ch as retrieve, create, all.',
+      'param' => 'String param to pass to the API call.',
     ),
     'options' => array(
-      'param' => 'String to pass to the API call.',
       'params' => 'Key/value pairs to pass to the API call.',
       'delete' => 'Delete the object that is retrieved.',
       'update' => 'Update the object that is retrieved with these new key/value pairs.',
     ),
     'examples' => array(
-      'drush stripe-api customer retrieve --param="cus_id123123123"' => 'Load a Stripe customer object.',
+      'drush stripe-api customer retrieve cus_id123123123' => 'Load a Stripe customer object.',
       'drush stripe-api account retrieve' => 'Get account information.',
       'drush stripe-api customer create --params="email=test@example.com&description=Testing"' => 'Create a new customer.',
       'drush stripe-api customer all --params="limit=5"' => 'Get 5 Stripe customers.',
       'drush stripe-api plan all' => 'List all plans',
       'drush stripe-api plan create --params="amount=2000&interval=month&name=TEST&currency=usd&id=test-plan"' => 'Create a new plan',
-      'drush stripe-api plan retrieve --param=test-plan --update="name=new name&amount=2500"' => 'Update plan information.',
-      'drush stripe-api customer retrieve --param=cus_id123123123 --delete' => 'Delete the given customer.',
-      'drush stripe-api customer retrieve --param=cus_id123123123 --update="email=new@email.com"' => 'Update a customers email.',
+      'drush stripe-api plan retrieve test-plan --update="name=new name&amount=2500"' => 'Update plan information.',
+      'drush stripe-api customer retrieve cus_id123123123 --delete' => 'Delete the given customer.',
+      'drush stripe-api customer retrieve cus_id123123123 --update="email=new@email.com"' => 'Update a customers email.',
     ),
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
@@ -55,9 +55,8 @@ function stripe_api_drush_command() {
 /**
  * Perform a Stripe API call.
  */
-function drush_stripe_api($obj, $method) {
-  $params = drush_get_option('param');
-  if (!$params) {
+function drush_stripe_api($obj, $method, $params = NULL) {
+  if (!$params && drush_get_option('params')) {
     $params = drush_get_option('params');
     $params = drupal_get_query_array($params);
   }
