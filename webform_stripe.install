@@ -1,0 +1,63 @@
+<?php
+
+/**
+ * Implements hook_requirements().
+ */
+function webform_stripe_requirements($phase) {
+  $requirements = array();
+
+  if ($phase == 'runtime') {
+    $t = get_t();
+
+    // Check for the Stripe PHP library.
+    $stripe = libraries_load('stripe-php');
+    if ($stripe['loaded']) {
+      $requirements['webform_stripe_library'] = array(
+        'title' => $t('Stripe PHP library'),
+        'value' => $t('Installed'),
+        'severity' => REQUIREMENT_OK,
+      );
+    }
+    else {
+      $requirements['webform_stripe_library'] = array(
+        'title' => $t('Stripe PHP library'),
+        'value' => $t('Missing!'),
+        'severity' => REQUIREMENT_ERROR,
+        'description' => $t('Stripe library missing. Download the Stripe library from <a href="!url">!url</a> and place it at %path.', array(
+          '!url' => 'https://github.com/stripe/stripe-php',
+          '%path' => 'sites/all/libraries/stripe-php',
+        )),
+      );
+    }
+
+    // Check for Stripe keys.
+    if (variable_get('webform_stripe_secret_key', '') && variable_get('webform_stripe_publishable_key', '')) {
+      $requirements['webform_stripe_keys'] = array(
+        'title' => $t('Stripe API keys'),
+        'value' => $t('Configured'),
+        'severity' => REQUIREMENT_OK,
+      );
+    }
+    else {
+      $requirements['webform_stripe_keys'] = array(
+        'title' => $t('Stripe API keys'),
+        'value' => $t('Not configured'),
+        'severity' => REQUIREMENT_ERROR,
+        'description' => $t('Stripe API keys are not configured. <a href="!url">Configure them here</a>.', array(
+          '!url' => url('admin/config/services/webform-stripe'),
+        )),
+      );
+    }
+  }
+
+  return $requirements;
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function webform_stripe_uninstall() {
+  variable_del('webform_stripe_secret_key');
+  variable_del('webform_stripe_publishable_key');
+  variable_del('webform_stripe_checkout_settings');
+}

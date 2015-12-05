@@ -1,0 +1,87 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function webform_stripe_menu() {
+  $items['admin/config/services/webform-stripe'] = array(
+    'title' => 'Webform Stripe settings',
+    'description' => 'Configure Stripe API for Webform.',
+    'access arguments' => array('administer site configuration'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('webform_stripe_settings_form'),
+    'file' => 'webform_stripe.admin.inc',
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_webform_component_info().
+ */
+function webform_stripe_webform_component_info() {
+  $components['webform_stripe'] = array(
+    'label' => t('Stripe payment'),
+    'description' => t('Displays a payment button which opens the Stripe Checkout form.'),
+    'features' => array(
+      'analysis' => FALSE,
+      'default_value' => FALSE,
+      'email' => FALSE,
+      'description' => FALSE,
+      'required' => FALSE,
+      'private' => FALSE,
+      'title_display' => FALSE,
+      'css_classes' => FALSE,
+    ),
+    'file' => 'webform_stripe.webform.inc',
+  );
+  return $components;
+}
+
+/**
+ * Implements hook_libraries_info().
+ */
+function webform_stripe_libraries_info() {
+  return array(
+    'stripe-php' => array(
+      'name' => 'Stripe API Client Library for PHP',
+      'vendor url' => 'https://stripe.com',
+      'download url' => 'https://github.com/stripe/stripe-php',
+      'dependencies' => array(),
+      'version arguments' => array(
+        'file' => 'VERSION',
+        'pattern' => '/(\d+\.\d+\.\d+)/',
+      ),
+      'files' => array(
+        'php' => array(
+          'init.php',
+        ),
+      ),
+    ),
+  );
+}
+
+/**
+ * Returns TRUE if Stripe value is a charge.
+ */
+function webform_stripe_is_charge($value) {
+  return substr($value, 0, 3) === 'ch_';
+}
+
+/**
+ * Returns Checkout settings.
+ */
+function webform_stripe_checkout_settings() {
+  return variable_get('webform_stripe_checkout_settings', array()) + array(
+    'name' => variable_get('site_name', 'Drupal'),
+    'image' => '',
+    'currency' => 'USD',
+    'locale' => 'auto',
+    'zip-code' => FALSE,
+    'billing-address' => FALSE,
+    'shipping-address' => FALSE,
+    'allow-remember-me' => FALSE,
+    'bitcoin' => FALSE,
+    'alipay' => FALSE,
+    'alipay-reusable' => FALSE,
+  );
+}

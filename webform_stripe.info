@@ -1,0 +1,6 @@
+name = Webform Stripe
+description = Adds Stripe integration with Webforms.
+package = Webform
+core = 7.x
+dependencies[] = libraries
+dependencies[] = webform
