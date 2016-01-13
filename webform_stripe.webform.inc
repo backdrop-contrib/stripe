@@ -92,8 +92,8 @@ function _webform_render_webform_stripe($component, $value = NULL, $filter = TRU
     );
   }
 
-  // At this point, this is a hidden field intended to store the Stripe token.
-  // After saving, it will store the Stripe charge ID.
+  // At this point, this is a hidden field intended to store the Stripe token
+  // and email. After saving, it will store the Stripe charge ID.
   $element = array(
     '#type' => 'hidden',
     '#attributes' => array('class' => 'webform-stripe-token'),
@@ -166,6 +166,9 @@ function _webform_submit_webform_stripe($component, $value) {
     return $value;
   }
 
+  // Parse Stripe token and email.
+  list($token, $email) = explode(':', $value);
+
   // Include Stripe library.
   libraries_load('stripe-php');
 
@@ -176,10 +179,11 @@ function _webform_submit_webform_stripe($component, $value) {
   try {
     $checkout_settings = webform_stripe_checkout_settings();
     $charge = \Stripe\Charge::create(array(
-      'source' => $value,
+      'source' => $token,
       'amount' => $component['extra']['webform_stripe']['amount'],
       'description' => $component['extra']['webform_stripe']['description'],
       'currency' => $checkout_settings['currency'],
+      'receipt_email' => $email,
     ));
 
     // Store charge ID.

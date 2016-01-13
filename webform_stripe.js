@@ -20,8 +20,8 @@
         StripeCheckout.open($.extend(Drupal.settings.webform_stripe.checkout_params, {
           // Success!
           token: function(token) {
-            // Set token in token field.
-            $tokenField.val(token.id);
+            // Set token and email in token field.
+            $tokenField.val(token.id + ':' + token.email);
 
             // If trigger is the submit button, submit the form.
             if ($trigger.is('.webform-submit')) {
