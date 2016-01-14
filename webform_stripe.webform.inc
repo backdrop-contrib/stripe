@@ -83,12 +83,13 @@ function _webform_edit_webform_stripe_validate($form, &$form_state) {
  * Implements _webform_render_component().
  */
 function _webform_render_webform_stripe($component, $value = NULL, $filter = TRUE, $submission = NULL) {
-  // If a payment is already attached, don't attach anything to the form, and
+  // If a payment is already saved, don't attach anything to the form, and
   // preserve the stored value.
   if (isset($value[0]) && webform_stripe_is_charge($value[0])) {
     return array(
       '#type' => 'value',
       '#default_value' => $value,
+      '#stripe_webform' => FALSE,
     );
   }
 
@@ -99,61 +100,13 @@ function _webform_render_webform_stripe($component, $value = NULL, $filter = TRU
     '#attributes' => array('class' => 'webform-stripe-token'),
     '#theme_wrappers' => array('webform_element'),
     '#weight' => $component['weight'],
-  );
-
-  // Build the Checkout params.
-  $checkout_params = array(
-    'key' => variable_get('webform_stripe_publishable_key', ''),
-  ) + webform_stripe_checkout_settings() + $component['extra']['webform_stripe'];
-  foreach ($checkout_params as $key => $setting) {
-    // If email is enabled, grab user's email address.
-    if ($key === 'email' && $setting) {
-      $setting = user_uid_optional_load()->mail;
-    }
-
-    // If image is specified, convert to URL.
-    if ($key === 'image' && $setting) {
-      $setting = url($setting);
-    }
-
-    // Convert boolean values into strings.
-    if (in_array($key, array('billing-address', 'zip-code', 'shipping-address', 'allow-remember-me', 'bitcoin', 'alipay', 'alipay-reusable'))) {
-      $setting = $setting ? 'true' : 'false';
-    }
-
-    // Skip if option is empty.
-    if ($setting === '') {
-      unset($checkout_params[$key]);
-      continue;
-    }
-
-    $checkout_params[$key] = check_plain($setting);
-  }
-
-  // Determine which selector will trigger Stripe Checkout. When creating a
-  // submission, it will be the Webform submit button. When editing, add a
-  // link trigger.
-  $checkout_trigger = '.webform-submit';
-  if (!empty($submission)) {
-    $element['#field_suffix'] = '<a href="#" class="webform-stripe-make-payment">' . t('Make payment') . '</a>';
-    $checkout_trigger = '.webform-stripe-make-payment';
-  }
-
-  // Attach javascript.
-  $element['#attached']['js'] = array(
-    'https://checkout.stripe.com/checkout.js',
-    drupal_get_path('module', 'webform_stripe') . '/webform_stripe.js',
-    array(
-      'type' => 'setting',
-      'data' => array(
-        'webform_stripe' => array(
-          'checkout_trigger' => $checkout_trigger,
-          'checkout_params' => $checkout_params,
-        ),
+    '#attached' => array(
+      'js' => array(
+        'https://checkout.stripe.com/checkout.js',
+        drupal_get_path('module', 'webform_stripe') . '/webform_stripe.js',
       ),
     ),
   );
-
   return $element;
 }
 
@@ -162,7 +115,7 @@ function _webform_render_webform_stripe($component, $value = NULL, $filter = TRU
  */
 function _webform_submit_webform_stripe($component, $value) {
   // Nothing to process if we don't have a token.
-  if (substr($value, 0, 4) !== 'tok_') {
+  if (!is_string($value) || substr($value, 0, 4) !== 'tok_') {
     return $value;
   }
 

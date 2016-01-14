@@ -12,6 +12,15 @@ function webform_stripe_menu() {
     'page arguments' => array('webform_stripe_settings_form'),
     'file' => 'webform_stripe.admin.inc',
   );
+  $items['webform-stripe-ajax/%'] = array(
+    'title' => 'Ajax callback',
+    'page callback' => 'webform_stripe_ajax_callback',
+    'page arguments' => array(1),
+    'delivery callback' => 'ajax_deliver',
+    'access callback' => TRUE,
+    'theme callback' => 'ajax_base_page_theme',
+    'type' => MENU_CALLBACK,
+  );
   return $items;
 }
 
@@ -83,5 +92,101 @@ function webform_stripe_checkout_settings() {
     'bitcoin' => FALSE,
     'alipay' => FALSE,
     'alipay-reusable' => FALSE,
+  );
+}
+
+/**
+ * Implements hook_form_BASE_FORM_ID_alter() for "webform_client_form".
+ */
+function webform_stripe_form_webform_client_form_alter(&$form, &$form_state, $form_id) {
+  // Look for a Stripe Webform component on a form that has a Submit button.
+  foreach ($form['#node']->webform['components'] as $cid => $component) {
+    if ($component['type'] === 'webform_stripe' && isset($form['actions']['submit'])) {
+      // New submission; attach ajax handler to Webform's submit button.
+      if (empty($form['#submission'])) {
+        $form['actions']['submit']['#ajax'] = array(
+          'path' => "webform-stripe-ajax/$cid",
+          'wrapper' => $form['#id'],
+        );
+      }
+
+      // Editing submission not already having a payment; add extra submit
+      // button with ajax handler.
+      else if (empty($form['#submission']->data[$cid][0]) || !webform_stripe_is_charge($form['#submission']->data[$cid][0])) {
+        $form['actions']['webform_stripe'] = array(
+          '#type' => 'submit',
+          '#value' => t('Save and Pay'),
+          '#weight' => 15,
+          '#ajax' => array(
+            'path' => "webform-stripe-ajax/$cid",
+            'wrapper' => $form['#id'],
+          ),
+        );
+      }
+
+      // Only process one Stripe Payment component per form.
+      break;
+    }
+  }
+}
+
+/**
+ * Ajax callback which validates form and prompts for payment.
+ */
+function webform_stripe_ajax_callback($cid) {
+  // Get the form, build it, and validate it. See ajax_form_callback() and
+  // drupal_process_form().
+  list($form, $form_state, $form_id, $form_build_id, $commands) = ajax_get_form();
+  $form_state['values'] = array();
+  $form = form_builder($form['#form_id'], $form, $form_state);
+  drupal_validate_form($form['#form_id'], $form, $form_state);
+
+  // If form had any validation errors, return it and display the messages.
+  if (form_get_errors()) {
+    return $form;
+  }
+
+  // The Stripe Payment component.
+  $component = $form['#node']->webform['components'][$cid];
+
+  // Build the Checkout params.
+  $params = array('key' => variable_get('webform_stripe_publishable_key', ''))
+    + webform_stripe_checkout_settings()
+    + $component['extra']['webform_stripe'];
+  foreach ($params as $key => $setting) {
+    // If email is enabled, grab user's email address.
+    if ($key === 'email' && $setting) {
+      $setting = user_uid_optional_load()->mail;
+    }
+
+    // If image is specified, convert to URL.
+    if ($key === 'image' && $setting) {
+      $setting = url($setting);
+    }
+
+    // Convert boolean values into strings.
+    if (in_array($key, array('billing-address', 'zip-code', 'shipping-address', 'allow-remember-me', 'bitcoin', 'alipay', 'alipay-reusable'))) {
+      $setting = $setting ? 'true' : 'false';
+    }
+
+    // Skip if option is empty.
+    if ($setting === '') {
+      unset($params[$key]);
+      continue;
+    }
+
+    $params[$key] = check_plain($setting);
+  }
+
+  // Prompt for payment.
+  return array(
+    '#type' => 'ajax',
+    '#commands' => array(
+      array(
+        'command' => 'stripeCheckout',
+        'params' => $params,
+        'selector' => '.webform-stripe-token',
+      ),
+    ),
   );
 }

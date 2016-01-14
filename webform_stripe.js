@@ -1,51 +1,20 @@
 (function($) {
 
-  // Opens Strip Checkout for enabled webforms.
-  Drupal.behaviors.webformStripe = {
-    attach: function(context, settings) {
-      // Get our DOM elements.
-      var $tokenField = $('.webform-stripe-token', context);
-      var $form = $tokenField.closest('form');
-      var $trigger = $form.find(Drupal.settings.webform_stripe.checkout_trigger);
+  /**
+   * Ajax command to open Stripe Checkout, store result, and submit form.
+   */
+  Drupal.ajax.prototype.commands.stripeCheckout = function(ajax, data, status) {
+    // Open Stripe Checkout.
+    StripeCheckout.open($.extend(data.params, {
+      // Payment was successful.
+      token: function(token) {
+        // Set token and email in token field.
+        $(data.selector, ajax.form.context).val(token.id + ':' + token.email);
 
-      // Clicking the trigger.
-      $trigger.click(function(event) {
-        // Prevent the default action.
-        event.preventDefault();
-
-        // Disable trigger.
-        $trigger.attr('disabled', 'disabled');
-
-        // Open Stripe checkout.
-        StripeCheckout.open($.extend(Drupal.settings.webform_stripe.checkout_params, {
-          // Success!
-          token: function(token) {
-            // Set token and email in token field.
-            $tokenField.val(token.id + ':' + token.email);
-
-            // If trigger is the submit button, submit the form.
-            if ($trigger.is('.webform-submit')) {
-              $form.submit();
-            }
-
-            // If trigger is the "make payment" link, change the text to help
-            // user know they should submit the form to complete payment.
-            else if ($trigger.is('.webform-stripe-make-payment')) {
-              $trigger.text(Drupal.t('Save to complete payment'));
-            }
-          },
-
-          // After closing Stripe form, unless we have a successful Stripe
-          // token, enable the trigger.
-          closed: function() {
-            if (!$tokenField.val()) {
-              $trigger.removeAttr('disabled');
-            }
-          }
-        }));
-      });
-
-    }
+        // Submit form.
+        ajax.form[0].submit();
+      }
+    }));
   };
 
 }(jQuery));
