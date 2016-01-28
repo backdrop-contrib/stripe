@@ -21,7 +21,7 @@ function stripe_api_drush_command() {
   $items['stripe-api-download'] = array(
     'description' => 'Download the latest stable Stripe PHP Library.',
     'options' => array(
-      'version' => 'Specify API library version to download. Example: 2.2.0',
+      'version' => 'Specify API library version to download. Example: 3.7.0',
     ),
   );
   $items['stripe-api'] = array(
@@ -97,7 +97,7 @@ function drush_stripe_api_download() {
       return FALSE;
     }
   }
-  $version = drush_get_option('version') ? drush_get_option('version') : '2.2.0';
+  $version = drush_get_option('version') ? drush_get_option('version') : '3.7.0';
   $path = drush_download_file('https://github.com/stripe/stripe-php/archive/v' . $version . '.tar.gz');
   drush_log($path);
 

@@ -6,6 +6,8 @@
 
 module_load_include('inc', 'stripe_api', 'stripe_api.methods');
 
+define('STRIPE_API_CHECKOUT_JS', 'https://checkout.stripe.com/checkout.js');
+
 /**
  * Implements hook_menu().
  */
@@ -18,6 +20,11 @@ function stripe_api_menu() {
     'file' => 'stripe_api.admin.inc',
     'access arguments' => array('edit stripe api settings'),
     'description' => 'Edit Stripe API credentials.',
+  );
+  $items['admin/config/services/stripe_api/settings'] = array(
+    'title' => 'Stripe',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
   );
   $items['stripe/webhook'] = array(
     'type' => MENU_CALLBACK,
