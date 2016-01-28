@@ -1,0 +1,41 @@
+<?php
+/**
+ * @file
+ * Includes install, uninstall, update, and requirements functionality.
+ */
+
+/**
+ * Implements hook_requirements().
+ */
+function stripe_api_requirements($phase) {
+  $requirements = array();
+  $t = get_t();
+  switch ($phase) {
+    case 'runtime':
+      $stripe = libraries_load('stripe');
+
+      if (!$stripe || !$stripe['loaded']) {
+        $requirements['stripe_api_library'] = array(
+          'title' => $t('Stripe PHP Library'),
+          'value' => $t('Missing!'),
+          'severity' => REQUIREMENT_ERROR,
+          'description' => $t('Stripe library missing. Download the Stripe library from <a href="!url">!url</a> and place it at %path.<br/>You can also run <b><code>drush stripe-api-download</code></b> to automatically get the library.', array(
+            '!url' => $stripe['download url'],
+            '%path' => 'sites/all/libraries/stripe',
+          )),
+        );
+      }
+      else {
+        $requirements['stripe_api_library'] = array(
+          'title' => $t('Stripe PHP Library'),
+          'value' => $t('Installed (%version)', array(
+            '%version' => $stripe['version'],
+          )),
+          'severity' => REQUIREMENT_OK,
+        );
+      }
+
+      break;
+  }
+  return $requirements;
+}
