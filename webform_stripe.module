@@ -17,7 +17,7 @@ function webform_stripe_permission() {
  */
 function webform_stripe_menu() {
   $items['admin/config/services/webform-stripe'] = array(
-    'title' => 'Webform Stripe settings',
+    'title' => 'Webform Stripe',
     'description' => 'Configure Stripe API for Webform.',
     'access arguments' => array('administer webform stripe'),
     'page callback' => 'drupal_get_form',
