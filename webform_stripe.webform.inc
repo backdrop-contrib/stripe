@@ -29,7 +29,7 @@ function _webform_edit_webform_stripe($component) {
   // Show notification if keys aren't configured.
   if (!variable_get('webform_stripe_secret_key', '') || !variable_get('webform_stripe_publishable_key', '')) {
     drupal_set_message(t('You need to <a href="!url">configure your Stripe settings</a>.', array(
-      '!url' => 'admin/config/services/webform-stripe',
+      '!url' => url('admin/config/services/webform-stripe'),
     )), 'warning');
   }
 
