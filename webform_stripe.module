@@ -1,13 +1,25 @@
 <?php
 
 /**
+ * Implements hook_permission().
+ */
+function webform_stripe_permission() {
+  return array(
+    'administer webform stripe' => array(
+      'title' => t('Administer Webform Stripe settings'),
+      'description' => t('Grants access to change global Stripe Checkout credentials and settings.'),
+    ),
+  );
+}
+
+/**
  * Implements hook_menu().
  */
 function webform_stripe_menu() {
   $items['admin/config/services/webform-stripe'] = array(
     'title' => 'Webform Stripe settings',
     'description' => 'Configure Stripe API for Webform.',
-    'access arguments' => array('administer site configuration'),
+    'access arguments' => array('administer webform stripe'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('webform_stripe_settings_form'),
     'file' => 'webform_stripe.admin.inc',

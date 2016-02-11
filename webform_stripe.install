@@ -61,3 +61,19 @@ function webform_stripe_uninstall() {
   variable_del('webform_stripe_publishable_key');
   variable_del('webform_stripe_checkout_settings');
 }
+
+/**
+ * Grant "administer webform stripe" permission to appropriate users.
+ */
+function webform_stripe_update_7000() {
+  $roles = user_roles(TRUE, 'administer site configuration');
+  foreach ($roles as $rid => $role) {
+    user_role_grant_permissions($rid, array('administer webform stripe'));
+  }
+
+  if (!empty($roles)) {
+    return t('"Administer Webform Stripe settings" permission was granted to: @roles.', array(
+      '@roles' => check_plain(implode(', ', $roles)),
+    ));
+  }
+}
