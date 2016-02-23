@@ -102,7 +102,7 @@ function _webform_render_webform_stripe($component, $value = NULL, $filter = TRU
     '#weight' => $component['weight'],
     '#attached' => array(
       'js' => array(
-        'https://checkout.stripe.com/checkout.js',
+        'https://checkout.stripe.com/checkout.js' => array('type' => 'external'),
         drupal_get_path('module', 'webform_stripe') . '/webform_stripe.js',
       ),
     ),
