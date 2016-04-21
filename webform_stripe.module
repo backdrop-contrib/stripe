@@ -129,7 +129,7 @@ function webform_stripe_form_webform_client_form_alter(&$form, &$form_state, $fo
       else if (empty($form['#submission']->data[$cid][0]) || !webform_stripe_is_charge($form['#submission']->data[$cid][0])) {
         $form['actions']['webform_stripe'] = array(
           '#type' => 'submit',
-          '#value' => t('Save and Pay'),
+          '#value' => t('Continue to Payment'),
           '#weight' => 15,
           '#ajax' => array(
             'path' => "webform-stripe-ajax/$cid",
