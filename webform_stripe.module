@@ -114,8 +114,10 @@ function webform_stripe_form_webform_client_form_alter(&$form, &$form_state, $fo
   // Look for a Stripe Webform component on a form that has a Submit button.
   foreach ($form['#node']->webform['components'] as $cid => $component) {
     if ($component['type'] === 'webform_stripe' && isset($form['actions']['submit'])) {
-      // New submission; attach ajax handler to Webform's submit button.
+      // New submission; change submit button to "Continue" and attach ajax
+      // handler to Webform's submit button.
       if (empty($form['#submission'])) {
+        $form['actions']['submit']['#value'] = t('Continue');
         $form['actions']['submit']['#ajax'] = array(
           'path' => "webform-stripe-ajax/$cid",
           'wrapper' => $form['#id'],
@@ -190,6 +192,22 @@ function webform_stripe_ajax_callback($cid) {
     $params[$key] = check_plain($setting);
   }
 
+  // Build action buttons to appear in place of form.
+  $actions = array(
+    '#type' => 'actions',
+    '#attributes' => array('class' => array('webform-stripe-actions')),
+    'pay' => array(
+      '#type' => 'button',
+      '#value' => $form['#node']->webform['submit_text'] ? $form['#node']->webform['submit_text'] : t('Submit'),
+      '#attributes' => array('class' => array('webform-stripe-pay-button')),
+    ),
+    'edit' => array(
+      '#type' => 'button',
+      '#value' => t('Return to form'),
+      '#attributes' => array('class' => array('webform-stripe-edit-button')),
+    ),
+  );
+
   // Prompt for payment.
   return array(
     '#type' => 'ajax',
@@ -198,6 +216,7 @@ function webform_stripe_ajax_callback($cid) {
         'command' => 'stripeCheckout',
         'params' => $params,
         'selector' => '.webform-stripe-token',
+        'actions' => drupal_render($actions),
       ),
     ),
   );
