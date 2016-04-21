@@ -33,6 +33,17 @@ function _webform_edit_webform_stripe($component) {
     )), 'warning');
   }
 
+  // Prevent multiple Stripe payment components per webform.
+  if (empty($component['cid'])) {
+    $node = node_load($component['nid']);
+    foreach ($node->webform['components'] as $other_component) {
+      if ($other_component['type'] === 'webform_stripe') {
+        drupal_set_message(t('Only one Stripe payment component is allowed.'), 'error');
+        drupal_goto("node/$node->nid/webform/components");
+      }
+    }
+  }
+
   $form['webform_stripe'] = array(
     '#type' => 'fieldset',
     '#title' => t('Stripe'),
