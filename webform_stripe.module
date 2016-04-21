@@ -213,7 +213,7 @@ function webform_stripe_ajax_callback($cid) {
     '#type' => 'ajax',
     '#commands' => array(
       array(
-        'command' => 'stripeCheckout',
+        'command' => 'webformStripeCheckout',
         'params' => $params,
         'selector' => '.webform-stripe-token',
         'actions' => drupal_render($actions),

@@ -1,9 +1,9 @@
 (function($) {
 
   /**
-   * Ajax command to open Stripe Checkout, store result, and submit form.
+   * Ajax command to add Stripe Checkout buttons to a Webform.
    */
-  Drupal.ajax.prototype.commands.stripeCheckout = function(ajax, data, status) {
+  Drupal.ajax.prototype.commands.webformStripeCheckout = function(ajax, data, status) {
     // Wrap and hide form.
     var $form = $(ajax.form[0]);
     $wrapper = $('<div class="webform-stripe-wrapper"></div>').hide();
