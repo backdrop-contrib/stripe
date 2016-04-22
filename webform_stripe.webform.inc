@@ -154,9 +154,14 @@ function _webform_submit_webform_stripe($component, $value) {
     $value = $charge->id;
   }
 
-  // Card was declined.
-  catch(\Stripe\Error\Card $e) {
+  // Charge failed.
+  catch(\Stripe\Error\Base $e) {
     drupal_set_message(t('The payment was unsuccessful.'), 'error');
+
+    // Log error message for admins.
+    watchdog('webform_stripe', 'Payment was unsuccessful with message: %message', array(
+      '%message' => $e->getMessage(),
+    ), WATCHDOG_ERROR, l(t('view'), "node/{$component['nid']}/webform"));
 
     // Remove token, so we don't try to charge this card again.
     $value = '';
