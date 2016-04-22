@@ -1,6 +1,13 @@
 <?php
 
 /**
+ * Default button texts.
+ */
+define('WEBFORM_STRIPE_CONTINUE_TEXT', t('Continue to payment >'));
+define('WEBFORM_STRIPE_PAY_TEXT', t('Pay with Stripe'));
+define('WEBFORM_STRIPE_CANCEL_TEXT', t('< Return to form'));
+
+/**
  * Implements hook_permission().
  */
 function webform_stripe_permission() {
@@ -151,11 +158,8 @@ function webform_stripe_form_webform_client_form_alter(&$form, &$form_state, $fo
         $form['#prefix'] = '<div id="' . $id . '">';
         $form['#suffix'] = '</div>';
 
-        $pay_text = t('Pay with Stripe');
-        $continue_text = t('Continue >');
-        $cancel_text = t('Return to form');
-
         // Hide Submit button and add our Continue button.
+        $continue_text = !empty($component['extra']['continue_text']) ? $component['extra']['continue_text'] : WEBFORM_STRIPE_CONTINUE_TEXT;
         if (!isset($form_state['triggering_element']) || $form_state['triggering_element']['#value'] !== $continue_text) {
           $form['actions']['submit']['#access'] = FALSE;
           $form['actions']['webform_stripe_continue'] = array(
@@ -185,7 +189,7 @@ function webform_stripe_form_webform_client_form_alter(&$form, &$form_state, $fo
           // Add our Pay button, which will trigger Stripe Checkout.
           $form['actions']['webform_stripe_pay'] = array(
             '#type' => 'button',
-            '#value' => $pay_text,
+            '#value' => !empty($component['extra']['pay_text']) ? $component['extra']['pay_text'] : WEBFORM_STRIPE_PAY_TEXT,
             '#attributes' => array('class' => array('webform-stripe-pay')),
             '#attached' => array(
               'js' => array(
@@ -200,7 +204,7 @@ function webform_stripe_form_webform_client_form_alter(&$form, &$form_state, $fo
           // Add our Cancel button, which will return to editing the form.
           $form['actions']['webform_stripe_cancel'] = array(
             '#type' => 'button',
-            '#value' => $cancel_text,
+            '#value' => !empty($component['extra']['cancel_text']) ? $component['extra']['cancel_text'] : WEBFORM_STRIPE_CANCEL_TEXT,
             '#attributes' => array('class' => array('webform-stripe-cancel')),
             '#ajax' => array(
               'callback' => 'webform_stripe_ajax_callback',
@@ -215,7 +219,7 @@ function webform_stripe_form_webform_client_form_alter(&$form, &$form_state, $fo
         // Add our Pay button, which will trigger Stripe Checkout.
         $form['actions']['webform_stripe_pay'] = array(
           '#type' => 'button',
-          '#value' => $pay_text,
+          '#value' => !empty($component['extra']['pay_text']) ? $component['extra']['pay_text'] : WEBFORM_STRIPE_PAY_TEXT,
           '#attributes' => array('class' => array('webform-stripe-pay')),
           '#weight' => 15,
           '#attached' => array(
@@ -231,6 +235,20 @@ function webform_stripe_form_webform_client_form_alter(&$form, &$form_state, $fo
 
       // Only process one Stripe Payment component per form.
       break;
+    }
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for "webform_configure_form".
+ */
+function webform_stripe_form_webform_configure_form_alter(&$form, &$form_state) {
+  // If form has Stripe payment component, disable the Submit button label
+  // field and let the user know why.
+  foreach ($form['#node']->webform['components'] as $component) {
+    if ($component['type'] === 'webform_stripe') {
+      $form['advanced']['submit_text']['#disabled'] = TRUE;
+      $form['advanced']['submit_text']['#description'] = t('This form has a Stripe payment component, which changes the way the Submit button works, so this field has no effect and has been disabled.');
     }
   }
 }

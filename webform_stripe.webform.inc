@@ -17,6 +17,9 @@ function _webform_defaults_webform_stripe() {
         'description' => '',
         'panel-label' => t('Pay {{amount}}'),
         'email' => TRUE,
+        'continue_text' => WEBFORM_STRIPE_CONTINUE_TEXT,
+        'pay_text' => WEBFORM_STRIPE_PAY_TEXT,
+        'cancel_text' => WEBFORM_STRIPE_CANCEL_TEXT,
       ),
     ),
   );
@@ -74,6 +77,34 @@ function _webform_edit_webform_stripe($component) {
     '#type' => 'checkbox',
     '#title' => t('Use email address of logged-in user'),
     '#default_value' => $component['extra']['webform_stripe']['email'],
+  );
+
+  $form['display']['continue_text'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Continue button label'),
+    '#description' => t('This is used for the button which validates the form and presents the <em>Pay</em> and <em>Cancel</em> buttons. Default: %default', array(
+      '%default' => WEBFORM_STRIPE_CONTINUE_TEXT,
+    )),
+    '#default_value' => isset($component['extra']['continue_text']) ? $component['extra']['continue_text'] : '',
+    '#parents' => array('extra', 'continue_text'),
+  );
+  $form['display']['pay_text'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Pay button label'),
+    '#description' => t('This is used for the button which opens the Stripe Checkout payment form. Default: <em>%default</em>', array(
+      '%default' => WEBFORM_STRIPE_PAY_TEXT,
+    )),
+    '#default_value' => isset($component['extra']['pay_text']) ? $component['extra']['pay_text'] : '',
+    '#parents' => array('extra', 'pay_text'),
+  );
+  $form['display']['cancel_text'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Cancel button label'),
+    '#description' => t('This is used for the button which cancels payment and returns to editing the form. Default: <em>%default</em>', array(
+      '%default' => WEBFORM_STRIPE_CANCEL_TEXT,
+    )),
+    '#default_value' => isset($component['extra']['cancel_text']) ? $component['extra']['cancel_text'] : '',
+    '#parents' => array('extra', 'cancel_text'),
   );
 
   $form['#validate'][] = '_webform_edit_webform_stripe_validate';
