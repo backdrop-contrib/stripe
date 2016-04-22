@@ -88,6 +88,30 @@ function _webform_edit_webform_stripe_validate($form, &$form_state) {
   if ($form_state['values']['extra']['webform_stripe']['amount'] <= 0) {
     form_set_error('extra][webform_stripe][amount', t('Enter a positive amount (in cents).'));
   }
+
+  // Ensure amount is greater than Stripe's minimum charge amount.
+  // https://support.stripe.com/questions/what-is-the-minimum-amount-i-can-charge-with-stripe
+  $settings = webform_stripe_checkout_settings();
+  $minimum = array(
+    'USD' => 50,
+    'CAD' => 50,
+    'GBP' => 30,
+    'EUR' => 50,
+    'DKK' => 2.5,
+    'NOK' => 3,
+    'SEK' => 3,
+    'CHF' => 50,
+    'AUD' => 50,
+    'JPY' => 50,
+    'MXN' => 10,
+    'SGD' => 50,
+  );
+  if (array_key_exists($settings['currency'], $minimum) && $form_state['values']['extra']['webform_stripe']['amount'] < $minimum[$settings['currency']]) {
+    form_set_error('extra][webform_stripe][amount', t('The minimum amount for %currency is %minimum (cents).', array(
+      '%currency' => $settings['currency'],
+      '%minimum' => $minimum[$settings['currency']],
+    )));
+  }
 }
 
 /**
