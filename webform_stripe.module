@@ -109,7 +109,10 @@ function webform_stripe_checkout_settings() {
 /**
  * Returns Stripe Checkout component settings, ready for Javascript.
  */
-function webform_stripe_checkout_settings_js($component) {
+function webform_stripe_checkout_settings_js($component, $data) {
+  // Load node.
+  $node = node_load($component['nid']);
+
   // Merge variable settings, default settings, and component settings.
   $settings = $component['extra']['webform_stripe']
     + array('key' => variable_get('webform_stripe_publishable_key', ''))
@@ -117,6 +120,60 @@ function webform_stripe_checkout_settings_js($component) {
 
   // Process replacements and prepare for Javascript.
   foreach ($settings as $key => $setting) {
+    // Prepare amount.
+    if ($key === 'amount') {
+      $value = $setting;
+
+      // Get from component.
+      if ($component['extra']['amount_type'] === 'component') {
+        $amount_component = $node->webform['components'][$component['extra']['amount_component']];
+        $value = isset($data[$amount_component['form_key']]) ? $data[$amount_component['form_key']] : (isset($data[$amount_component['cid']]) ? $data[$amount_component['cid']] : NULL);
+
+        // For selects, grab the key and find the mapped amount.
+        if ($value !== NULL && $amount_component['type'] === 'select') {
+          $value = _webform_submit_select($amount_component, $value);
+          if (!is_array($value) && array_key_exists($value, $component['extra']['amount_mapping'])) {
+            $value = $component['extra']['amount_mapping'][$value];
+          }
+          else {
+            $value = NULL;
+          }
+        }
+      }
+
+      // Optionally multiply the amount.
+      if (!empty($component['extra']['amount_multiplier'])) {
+        $value *= $component['extra']['amount_multiplier'];
+      }
+
+      // Only change this if not empty.
+      if (!empty($value)) {
+        $setting = $value;
+      }
+    }
+
+    // Get description from component.
+    if ($key === 'description' && $component['extra']['description_type'] === 'component') {
+      $description_component = $node->webform['components'][$component['extra']['description_component']];
+      $value = isset($data[$description_component['form_key']]) ? $data[$description_component['form_key']] : (isset($data[$description_component['cid']]) ? $data[$description_component['cid']] : NULL);
+
+      // For selects, grab the value and find the mapped description.
+      if ($value !== NULL && $amount_component['type'] === 'select') {
+        $value = _webform_submit_select($description_component, $value);
+        if (!is_array($value) && array_key_exists($value, $component['extra']['description_mapping'])) {
+          $value = $component['extra']['description_mapping'][$value];
+        }
+        else {
+          $value = NULL;
+        }
+      }
+
+      // Only change this if not empty.
+      if (!empty($value)) {
+        $setting = $value;
+      }
+    }
+
     // If email is enabled, grab user's email address.
     if ($key === 'email' && $setting) {
       $setting = user_uid_optional_load()->mail;
@@ -145,12 +202,90 @@ function webform_stripe_checkout_settings_js($component) {
 }
 
 /**
+ * Implements hook_form_FORM_ID_alter() for "webform_component_edit_form".
+ */
+function webform_stripe_form_webform_component_edit_form_alter(&$form, &$form_state) {
+  // Alter the Stripe payment component edit form, since Webform doesn't pass
+  // the form state to _webform_edit_webform_stripe().
+  if ($form['type']['#value'] === 'webform_stripe') {
+    // Include in the form cache so it's available for ajax.
+    form_load_include($form_state, 'inc', 'webform_stripe', 'webform_stripe.webform');
+
+    $component = $form_state['build_info']['args'][1];
+
+    foreach (array('amount', 'description') as $setting) {
+      // Add ajax handler to component field.
+      $form[$setting]["{$setting}_component"]['#ajax'] = array(
+        'callback' => "webform_stripe_{$setting}_mapping_ajax_callback",
+        'wrapper' => "webform-stripe-{$setting}-mapping",
+      );
+
+      // To get started, hide mapping fieldset by making it a container.
+      $form[$setting]["{$setting}_mapping"]['#type'] = 'container';
+
+      // Get the selected component. If it's a select field, add them to the
+      // mapping container and display the fieldset, and default the mapping
+      // values to the select option values.
+      $cid = isset($form_state['values']['extra']["{$setting}_component"]) ? $form_state['values']['extra']["{$setting}_component"] : $component['extra']["{$setting}_component"];
+      if (!empty($cid) && isset($form['#node']->webform['components'][$cid])) {
+        $dynamic_component = $form['#node']->webform['components'][$cid];
+        if ($dynamic_component['type'] === 'select') {
+          $form[$setting]["{$setting}_mapping"]['#type'] = 'fieldset';
+          $options = _webform_select_options($dynamic_component);
+          foreach ($options as $key => $value) {
+            $form[$setting]["{$setting}_mapping"][$key] = array(
+              '#type' => 'textfield',
+              '#field_suffix' => check_plain($value),
+              '#size' => $setting === 'amount' ? 10 : 40,
+              '#default_value' => isset($component['extra']["{$setting}_mapping"][$key]) ? $component['extra']["{$setting}_mapping"][$key] : ($setting === 'description' ? $value : ''),
+            );
+          }
+        }
+      }
+    }
+  }
+
+  // When editing a Select component that's being used as the dynamic amount or
+  // description component, show a reminder message.
+  if ($form['type']['#value'] === 'select' && !empty($form_state['build_info']['args'][1]['cid'])) {
+    foreach ($form['#node']->webform['components'] as $cid => $component) {
+      if ($component['type'] === 'webform_stripe') {
+        foreach (array('amount', 'description') as $setting) {
+          if ($component['extra']["{$setting}_type"] === 'component' && $component['extra']["{$setting}_component"] === $form_state['build_info']['args'][1]['cid']) {
+            drupal_set_message(t('The Stripe payment component is using this field to populate the %setting. If you add options to this field, be sure to also update the Stripe payment options.', array(
+              '%setting' => $setting,
+            )), 'warning');
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Ajax callback which returns the amount mapping fieldset.
+ */
+function webform_stripe_amount_mapping_ajax_callback($form, $form_state) {
+  return $form['amount']['amount_mapping'];
+}
+
+/**
+ * Ajax callback which returns the description mapping fieldset.
+ */
+function webform_stripe_description_mapping_ajax_callback($form, $form_state) {
+  return $form['description']['description_mapping'];
+}
+
+/**
  * Implements hook_form_BASE_FORM_ID_alter() for "webform_client_form".
  */
 function webform_stripe_form_webform_client_form_alter(&$form, &$form_state, $form_id) {
   // Look for a Stripe payment component on a form that has a Submit button.
   foreach ($form['#node']->webform['components'] as $cid => $component) {
     if ($component['type'] === 'webform_stripe' && isset($form['actions']['submit'])) {
+      // Store component for easy access in our submit callback.
+      $form['#webform_stripe'] = $component;
+
       // New submission.
       if (empty($form['#submission'])) {
         // Wrap form with ID so we can replace it via ajax.
@@ -160,7 +295,7 @@ function webform_stripe_form_webform_client_form_alter(&$form, &$form_state, $fo
 
         // Hide Submit button and add our Continue button.
         $continue_text = !empty($component['extra']['continue_text']) ? $component['extra']['continue_text'] : WEBFORM_STRIPE_CONTINUE_TEXT;
-        if (!isset($form_state['triggering_element']) || $form_state['triggering_element']['#value'] !== $continue_text) {
+        if (!isset($form_state['triggering_element']) || !($form_state['triggering_element']['#name'] === 'op' && $form_state['triggering_element']['#value'] === $continue_text)) {
           $form['actions']['submit']['#access'] = FALSE;
           $form['actions']['webform_stripe_continue'] = array(
             '#type' => 'button',
@@ -194,7 +329,7 @@ function webform_stripe_form_webform_client_form_alter(&$form, &$form_state, $fo
             '#attached' => array(
               'js' => array(
                 array(
-                  'data' => array('webform_stripe' => webform_stripe_checkout_settings_js($component)),
+                  'data' => array('webform_stripe' => webform_stripe_checkout_settings_js($component, $form_state['values']['submitted'])),
                   'type' => 'setting',
                 ),
               ),
@@ -212,6 +347,9 @@ function webform_stripe_form_webform_client_form_alter(&$form, &$form_state, $fo
             ),
           );
         }
+
+        // Add submit callback.
+        $form['#submit'][] = 'webform_stripe_process_charge';
       }
 
       // Editing submission not already having a payment.
@@ -225,18 +363,87 @@ function webform_stripe_form_webform_client_form_alter(&$form, &$form_state, $fo
           '#attached' => array(
             'js' => array(
               array(
-                'data' => array('webform_stripe' => webform_stripe_checkout_settings_js($component)),
+                'data' => array('webform_stripe' => webform_stripe_checkout_settings_js($component, $form['#submission']->data)),
                 'type' => 'setting',
               ),
             ),
           ),
         );
+
+        // Add submit callback.
+        $form['#submit'][] = 'webform_stripe_process_charge';
       }
 
       // Only process one Stripe Payment component per form.
       break;
     }
   }
+}
+
+/**
+ * Ajax callback which returns the form.
+ */
+function webform_stripe_ajax_callback($form, $form_state) {
+  return $form;
+}
+
+/**
+ * Webform client form submit callback which processes a Stripe charge.
+ */
+function webform_stripe_process_charge(&$form, &$form_state) {
+  // Get Stripe token.
+  $component = $form['#webform_stripe'];
+  $value = $form_state['values']['submitted'][$component['cid']];
+
+  // Nothing to process if we don't have a token.
+  if (substr($value, 0, 4) !== 'tok_') {
+    return;
+  }
+
+  // Build JS settings, from which we'll get our amount and description.
+  $settings = webform_stripe_checkout_settings_js($component, $form_state['values']['submitted']);
+
+  // Parse Stripe token and email.
+  list($token, $email) = explode(':', $value);
+
+  // Include Stripe library.
+  libraries_load('stripe-php');
+
+  // Set secret key.
+  \Stripe\Stripe::setApiKey(variable_get('webform_stripe_secret_key', ''));
+
+  // Charge card.
+  try {
+    $checkout_settings = webform_stripe_checkout_settings();
+    $charge = \Stripe\Charge::create(array(
+      'source' => $token,
+      'amount' => $settings['amount'],
+      'description' => $settings['description'],
+      'currency' => $checkout_settings['currency'],
+      'receipt_email' => $email,
+    ));
+
+    // Store charge ID.
+    $value = $charge->id;
+  }
+
+  // Charge failed.
+  catch(\Stripe\Error\Base $e) {
+    drupal_set_message(t('The payment was unsuccessful.'), 'error');
+
+    // Log error message for admins.
+    watchdog('webform_stripe', 'Payment was unsuccessful with message: %message', array(
+      '%message' => $e->getMessage(),
+    ), WATCHDOG_ERROR, l(t('view'), "node/{$component['nid']}/webform"));
+  }
+
+  // Update submission data.
+  db_query("UPDATE {webform_submitted_data} SET data = :value WHERE nid = :nid AND sid = :sid AND cid = :cid", array(
+    ':value' => $value,
+    ':nid' => $component['nid'],
+    ':sid' => $form_state['values']['details']['sid'],
+    ':cid' => $component['cid'],
+  ));
 }
 
 /**
@@ -251,11 +458,4 @@ function webform_stripe_form_webform_configure_form_alter(&$form, &$form_state) 
       $form['advanced']['submit_text']['#description'] = t('This form has a Stripe payment component, which changes the way the Submit button works, so this field has no effect and has been disabled.');
     }
   }
-}
-
-/**
- * Ajax callback which returns the form.
- */
-function webform_stripe_ajax_callback($form, $form_state) {
-  return $form;
 }

@@ -18,6 +18,13 @@ function _webform_defaults_webform_stripe() {
         'panel-label' => t('Pay {{amount}}'),
         'email' => TRUE,
       ),
+      'amount_type' => 'value',
+      'amount_component' => '',
+      'amount_mapping' => array(),
+      'amount_multiplier' => 100,
+      'description_type' => 'value',
+      'description_component' => '',
+      'description_mapping' => array(),
       'continue_text' => '',
       'pay_text' => '',
       'cancel_text' => '',
@@ -36,9 +43,10 @@ function _webform_edit_webform_stripe($component) {
     )), 'warning');
   }
 
+  $node = node_load($component['nid']);
+
   // Prevent multiple Stripe payment components per webform.
   if (empty($component['cid'])) {
-    $node = node_load($component['nid']);
     foreach ($node->webform['components'] as $other_component) {
       if ($other_component['type'] === 'webform_stripe') {
         drupal_set_message(t('Only one Stripe payment component is allowed.'), 'error');
@@ -47,25 +55,154 @@ function _webform_edit_webform_stripe($component) {
     }
   }
 
+  // Amount.
+  $form['amount'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Amount'),
+    '#collapsible' => TRUE,
+    '#tree' => TRUE,
+    '#parents' => array('extra'),
+  );
+  $form['amount']['amount_type'] = array(
+    '#type' => 'radios',
+    '#title' => t('Amount'),
+    '#options' => array(
+      'value' => t('Fixed'),
+      'component' => t('Dynamic'),
+    ),
+    '#default_value' => $component['extra']['amount_type'],
+    '#required' => TRUE,
+  );
+  $form['amount']['amount'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Fixed amount'),
+    '#description' => t("The amount (in cents) that will be charged."),
+    '#default_value' => $component['extra']['webform_stripe']['amount'],
+    '#states' => array(
+      'visible' => array(
+        ':input[name="extra[amount_type]"]' => array('value' => 'value'),
+      ),
+    ),
+    '#parents' => array('extra', 'webform_stripe', 'amount'),
+  );
+  $amount_components = array();
+  foreach ($node->webform['components'] as $other_component) {
+    if (in_array($other_component['type'], array('textfield', 'number', 'select'))) {
+      if ($other_component['type'] === 'select' && $other_component['extra']['multiple']) {
+        continue;
+      }
+      $amount_components[$other_component['cid']] = check_plain($other_component['name']);
+    }
+  }
+  $form['amount']['amount_component'] = array(
+    '#type' => 'select',
+    '#title' => t('Dynamic amount'),
+    '#description' => t("Sets the component which will determine the amount charged. Eligible components include: Textfield, Number, Select options (not multiple)."),
+    '#options' => $amount_components,
+    '#empty_option' => '- ' . t('Select a component') . ' -',
+    '#default_value' => $component['extra']['amount_component'],
+    '#states' => array(
+      'visible' => array(
+        ':input[name="extra[amount_type]"]' => array('value' => 'component'),
+      ),
+    ),
+  );
+  $form['amount']['amount_mapping'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Amount options'),
+    '#description' => t('The selected amount component has multiple options. You may enter an amount for each choice.'),
+    '#prefix' => '<div id="webform-stripe-amount-mapping">',
+    '#suffix' => '</div>',
+    '#tree' => TRUE,
+    '#states' => array(
+      'visible' => array(
+        ':input[name="extra[amount_type]"]' => array('value' => 'component'),
+      ),
+    ),
+  );
+  $form['amount']['amount_multiplier'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Amount multiplier'),
+    '#description' => t("Optionally multiply the amount by this value. This is useful if you don't want to deal with cents here, or require your users to enter values in cents on the form."),
+    '#default_value' => $component['extra']['amount_multiplier'],
+    '#size' => 10,
+  );
+
+  // Description.
+  $form['description'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Description'),
+    '#collapsible' => TRUE,
+    '#tree' => TRUE,
+    '#parents' => array('extra'),
+  );
+  $form['description']['description_type'] = array(
+    '#type' => 'radios',
+    '#title' => t('Description'),
+    '#options' => array(
+      'value' => t('Fixed'),
+      'component' => t('Dynamic'),
+    ),
+    '#default_value' => $component['extra']['description_type'],
+    '#required' => TRUE,
+    '#parents' => array('extra', 'description_type'),
+  );
+  $form['description']['description'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Fixed description'),
+    '#description' => t('A description of the product or service being purchased.'),
+    '#default_value' => $component['extra']['webform_stripe']['description'],
+    '#states' => array(
+      'visible' => array(
+        ':input[name="extra[description_type]"]' => array('value' => 'value'),
+      ),
+    ),
+    '#parents' => array('extra', 'webform_stripe', 'description'),
+  );
+  $description_components = array();
+  foreach ($node->webform['components'] as $other_component) {
+    if (in_array($other_component['type'], array('textfield', 'select'))) {
+      if ($other_component['type'] === 'select' && $other_component['extra']['multiple']) {
+        continue;
+      }
+      $description_components[$other_component['cid']] = check_plain($other_component['name']);
+    }
+  }
+  $form['description']['description_component'] = array(
+    '#type' => 'select',
+    '#title' => t('Dynamic description'),
+    '#description' => t("Sets the component which will determine the description. Eligible components include: Textfield, Select options (not multiple)."),
+    '#options' => $description_components,
+    '#empty_option' => '- ' . t('Select a component') . ' -',
+    '#default_value' => $component['extra']['description_component'],
+    '#states' => array(
+      'visible' => array(
+        ':input[name="extra[description_type]"]' => array('value' => 'component'),
+      ),
+    ),
+    '#parents' => array('extra', 'description_component'),
+  );
+  $form['description']['description_mapping'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Description options'),
+    '#description' => t('The selected description component has multiple options. You may enter a description for each choice. If a field is left blank, the selected option will be used as the description.'),
+    '#prefix' => '<div id="webform-stripe-description-mapping">',
+    '#suffix' => '</div>',
+    '#tree' => TRUE,
+    '#states' => array(
+      'visible' => array(
+        ':input[name="extra[description_type]"]' => array('value' => 'component'),
+      ),
+    ),
+  );
+
+  // Additional settings.
   $form['webform_stripe'] = array(
     '#type' => 'fieldset',
-    '#title' => t('Stripe'),
+    '#title' => t('Settings'),
     '#collapsible' => TRUE,
     '#tree' => TRUE,
     '#parents' => array('extra', 'webform_stripe'),
-  );
-  $form['webform_stripe']['amount'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Amount'),
-    '#description' => t("The amount (in cents) that's shown to the user."),
-    '#default_value' => $component['extra']['webform_stripe']['amount'],
-    '#required' => TRUE,
-  );
-  $form['webform_stripe']['description'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Description'),
-    '#description' => t('A description of the product or service being purchased.'),
-    '#default_value' => $component['extra']['webform_stripe']['description'],
   );
   $form['webform_stripe']['panel-label'] = array(
     '#type' => 'textfield',
@@ -79,6 +216,7 @@ function _webform_edit_webform_stripe($component) {
     '#default_value' => $component['extra']['webform_stripe']['email'],
   );
 
+  // Button texts.
   $form['display']['continue_text'] = array(
     '#type' => 'textfield',
     '#title' => t('Continue button label'),
@@ -115,33 +253,63 @@ function _webform_edit_webform_stripe($component) {
  * Edit validate callback.
  */
 function _webform_edit_webform_stripe_validate($form, &$form_state) {
-  // Ensure positive amount.
-  if ($form_state['values']['extra']['webform_stripe']['amount'] <= 0) {
-    form_set_error('extra][webform_stripe][amount', t('Enter a positive amount (in cents).'));
+  // Manual amount.
+  if ($form_state['values']['extra']['amount_type'] === 'value') {
+    // Ensure positive amount.
+    if (empty($form_state['values']['extra']['webform_stripe']['amount']) || $form_state['values']['extra']['webform_stripe']['amount'] <= 0) {
+      form_set_error('extra][webform_stripe][amount', t('Enter a positive amount (in cents).'));
+    }
+
+    // Ensure amount is greater than Stripe's minimum charge amount.
+    // https://support.stripe.com/questions/what-is-the-minimum-amount-i-can-charge-with-stripe
+    $settings = webform_stripe_checkout_settings();
+    $minimum = array(
+      'USD' => 50,
+      'CAD' => 50,
+      'GBP' => 30,
+      'EUR' => 50,
+      'DKK' => 2.5,
+      'NOK' => 3,
+      'SEK' => 3,
+      'CHF' => 50,
+      'AUD' => 50,
+      'JPY' => 50,
+      'MXN' => 10,
+      'SGD' => 50,
+    );
+    if (array_key_exists($settings['currency'], $minimum) && ($form_state['values']['extra']['webform_stripe']['amount'] * $form_state['values']['extra']['amount_multiplier']) < $minimum[$settings['currency']]) {
+      form_set_error('extra][webform_stripe][amount', t('The minimum amount for %currency is %minimum (cents).', array(
+        '%currency' => $settings['currency'],
+        '%minimum' => $minimum[$settings['currency']],
+      )));
+    }
   }
 
-  // Ensure amount is greater than Stripe's minimum charge amount.
-  // https://support.stripe.com/questions/what-is-the-minimum-amount-i-can-charge-with-stripe
-  $settings = webform_stripe_checkout_settings();
-  $minimum = array(
-    'USD' => 50,
-    'CAD' => 50,
-    'GBP' => 30,
-    'EUR' => 50,
-    'DKK' => 2.5,
-    'NOK' => 3,
-    'SEK' => 3,
-    'CHF' => 50,
-    'AUD' => 50,
-    'JPY' => 50,
-    'MXN' => 10,
-    'SGD' => 50,
-  );
-  if (array_key_exists($settings['currency'], $minimum) && $form_state['values']['extra']['webform_stripe']['amount'] < $minimum[$settings['currency']]) {
-    form_set_error('extra][webform_stripe][amount', t('The minimum amount for %currency is %minimum (cents).', array(
-      '%currency' => $settings['currency'],
-      '%minimum' => $minimum[$settings['currency']],
-    )));
+  // Component amount.
+  if ($form_state['values']['extra']['amount_type'] === 'component') {
+    // Component field is required.
+    if (empty($form_state['values']['extra']['amount_component'])) {
+      form_set_error('extra][amount_component', t('Choose a component to use for the amount.'));
+    }
+
+    // All amount mappings must be set.
+    if (!empty($form_state['values']['extra']['amount_mapping'])) {
+      foreach ($form_state['values']['extra']['amount_mapping'] as $key => $value) {
+        if (empty($value)) {
+          form_set_error('extra][amount_mapping', t('Enter an amount for each component option.'));
+        }
+      }
+    }
+  }
+
+  // Component multiplier must be numeric.
+  if (!empty($form_state['values']['extra']['amount_multiplier']) && !is_numeric($form_state['values']['extra']['amount_multiplier'])) {
+    form_set_error('extra][amount_multiplier', t('Enter a numeric amount multiplier.'));
+  }
+
+  // Component description.
+  if ($form_state['values']['extra']['description_type'] === 'component' && empty($form_state['values']['extra']['description_component'])) {
+    form_set_error('extra][description_component', t('Choose a component to use for the description.'));
   }
 }
 
@@ -174,55 +342,6 @@ function _webform_render_webform_stripe($component, $value = NULL, $filter = TRU
     ),
   );
   return $element;
-}
-
-/**
- * Implements _webform_submit_component().
- */
-function _webform_submit_webform_stripe($component, $value) {
-  // Nothing to process if we don't have a token.
-  if (!is_string($value) || substr($value, 0, 4) !== 'tok_') {
-    return $value;
-  }
-
-  // Parse Stripe token and email.
-  list($token, $email) = explode(':', $value);
-
-  // Include Stripe library.
-  libraries_load('stripe-php');
-
-  // Set secret key.
-  \Stripe\Stripe::setApiKey(variable_get('webform_stripe_secret_key', ''));
-
-  // Charge card.
-  try {
-    $checkout_settings = webform_stripe_checkout_settings();
-    $charge = \Stripe\Charge::create(array(
-      'source' => $token,
-      'amount' => $component['extra']['webform_stripe']['amount'],
-      'description' => $component['extra']['webform_stripe']['description'],
-      'currency' => $checkout_settings['currency'],
-      'receipt_email' => $email,
-    ));
-
-    // Store charge ID.
-    $value = $charge->id;
-  }
-
-  // Charge failed.
-  catch(\Stripe\Error\Base $e) {
-    drupal_set_message(t('The payment was unsuccessful.'), 'error');
-
-    // Log error message for admins.
-    watchdog('webform_stripe', 'Payment was unsuccessful with message: %message', array(
-      '%message' => $e->getMessage(),
-    ), WATCHDOG_ERROR, l(t('view'), "node/{$component['nid']}/webform"));
-
-    // Remove token, so we don't try to charge this card again.
-    $value = '';
-  }
-
-  return $value;
 }
 
 /**
