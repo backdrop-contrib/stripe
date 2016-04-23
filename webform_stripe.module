@@ -395,6 +395,7 @@ function webform_stripe_process_charge(&$form, &$form_state) {
   // Get Stripe token.
   $component = $form['#webform_stripe'];
   $value = $form_state['values']['submitted'][$component['cid']];
+  $sid = $form_state['values']['details']['sid'];
 
   // Nothing to process if we don't have a token.
   if (substr($value, 0, 4) !== 'tok_') {
@@ -422,6 +423,9 @@ function webform_stripe_process_charge(&$form, &$form_state) {
       'description' => $settings['description'],
       'currency' => $checkout_settings['currency'],
       'receipt_email' => $email,
+      'metadata' => array(
+        'submission_url' => url("node/{$component['nid']}/submission/$sid", array('absolute' => TRUE)),
+      ),
     ));
 
     // Store charge ID.
@@ -442,7 +446,7 @@ function webform_stripe_process_charge(&$form, &$form_state) {
   db_query("UPDATE {webform_submitted_data} SET data = :value WHERE nid = :nid AND sid = :sid AND cid = :cid", array(
     ':value' => $value,
     ':nid' => $component['nid'],
-    ':sid' => $form_state['values']['details']['sid'],
+    ':sid' => $sid,
     ':cid' => $component['cid'],
   ));
 }
