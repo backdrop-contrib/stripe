@@ -125,7 +125,7 @@ function webform_stripe_checkout_settings_js($component, $data) {
       $value = $setting;
 
       // Get from component.
-      if ($component['extra']['amount_type'] === 'component') {
+      if ($component['extra']['amount_type'] === 'component' && array_key_exists($component['extra']['amount_component'], $node->webform['components'])) {
         $amount_component = $node->webform['components'][$component['extra']['amount_component']];
         $value = isset($data[$amount_component['form_key']]) ? $data[$amount_component['form_key']] : (isset($data[$amount_component['cid']]) ? $data[$amount_component['cid']] : NULL);
 
@@ -153,12 +153,12 @@ function webform_stripe_checkout_settings_js($component, $data) {
     }
 
     // Get description from component.
-    if ($key === 'description' && $component['extra']['description_type'] === 'component') {
+    if ($key === 'description' && $component['extra']['description_type'] === 'component' && array_key_exists($component['extra']['description_component'], $node->webform['components'])) {
       $description_component = $node->webform['components'][$component['extra']['description_component']];
       $value = isset($data[$description_component['form_key']]) ? $data[$description_component['form_key']] : (isset($data[$description_component['cid']]) ? $data[$description_component['cid']] : NULL);
 
       // For selects, grab the value and find the mapped description.
-      if ($value !== NULL && $amount_component['type'] === 'select') {
+      if ($value !== NULL && $description_component['type'] === 'select') {
         $value = _webform_submit_select($description_component, $value);
         if (!is_array($value) && array_key_exists($value, $component['extra']['description_mapping'])) {
           $value = $component['extra']['description_mapping'][$value];
