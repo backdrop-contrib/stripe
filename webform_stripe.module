@@ -43,6 +43,7 @@ function webform_stripe_webform_component_info() {
     'description' => t('Displays a payment button which opens the Stripe Checkout form.'),
     'features' => array(
       'analysis' => FALSE,
+      'conditional' => FALSE,
       'default_value' => FALSE,
       'email' => FALSE,
       'description' => FALSE,
