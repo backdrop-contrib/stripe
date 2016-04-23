@@ -76,7 +76,7 @@ function _webform_edit_webform_stripe($component) {
   $form['amount']['amount'] = array(
     '#type' => 'textfield',
     '#title' => t('Fixed amount'),
-    '#description' => t("The amount (in cents) that will be charged."),
+    '#description' => t('The amount that will be charged. Stripe expects the value in cents, but you can enter a whole value here which will be multiplied by the multiplier below.'),
     '#default_value' => $component['extra']['webform_stripe']['amount'],
     '#states' => array(
       'visible' => array(
