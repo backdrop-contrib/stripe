@@ -85,3 +85,19 @@ function webform_stripe_update_7000() {
     ));
   }
 }
+
+/**
+ * Sets amount multiplier to 0 for existing Stripe components.
+ */
+function webform_stripe_update_7001() {
+  $components = db_query("SELECT * FROM {webform_component} WHERE type = 'webform_stripe'")->fetchAll();
+  foreach ($components as $component) {
+    $extra = unserialize($component->extra);
+    $extra['amount_multiplier'] = 0;
+    db_query("UPDATE {webform_component} SET extra = :extra WHERE nid = :nid AND cid = :cid", array(
+      ':extra' => serialize($extra),
+      ':nid' => $component->nid,
+      ':cid' => $component->cid,
+    ));
+  }
+}
