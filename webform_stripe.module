@@ -422,7 +422,7 @@ function webform_stripe_process_charge(&$form, &$form_state) {
     $charge = \Stripe\Charge::create(array(
       'source' => $token,
       'amount' => $settings['amount'],
-      'description' => $settings['description'],
+      'description' => isset($settings['description']) ? $settings['description'] : '',
       'currency' => $checkout_settings['currency'],
       'receipt_email' => $email,
       'metadata' => array(
