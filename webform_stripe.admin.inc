@@ -8,19 +8,29 @@ function webform_stripe_settings_form() {
   $form['keys'] = array(
     '#type' => 'fieldset',
     '#title' => t('Stripe API Keys'),
-    '#description' => t('The test or live keys from <a href="!url">your Stripe dashboard</a>.', array(
+    '#description' => t('The API keys from <a href="!url">your Stripe dashboard</a>.', array(
       '!url' => 'https://dashboard.stripe.com/account/apikeys',
     )),
   );
-  $form['keys']['webform_stripe_secret_key'] = array(
+  $form['keys']['webform_stripe_test_secret_key'] = array(
     '#type' => 'textfield',
-    '#title' => t('Secret Key'),
-    '#default_value' => variable_get('webform_stripe_secret_key', ''),
+    '#title' => t('Test Secret Key'),
+    '#default_value' => variable_get('webform_stripe_test_secret_key', ''),
   );
-  $form['keys']['webform_stripe_publishable_key'] = array(
+  $form['keys']['webform_stripe_test_publishable_key'] = array(
     '#type' => 'textfield',
-    '#title' => t('Publishable Key'),
-    '#default_value' => variable_get('webform_stripe_publishable_key', ''),
+    '#title' => t('Test Publishable Key'),
+    '#default_value' => variable_get('webform_stripe_test_publishable_key', ''),
+  );
+  $form['keys']['webform_stripe_live_secret_key'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Live Secret Key'),
+    '#default_value' => variable_get('webform_stripe_live_secret_key', ''),
+  );
+  $form['keys']['webform_stripe_live_publishable_key'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Live Publishable Key'),
+    '#default_value' => variable_get('webform_stripe_live_publishable_key', ''),
   );
 
   // Checkout settings.

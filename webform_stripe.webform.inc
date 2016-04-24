@@ -18,6 +18,7 @@ function _webform_defaults_webform_stripe() {
         'panel-label' => t('Pay {{amount}}'),
         'email' => TRUE,
       ),
+      'test_mode' => FALSE,
       'amount_type' => 'value',
       'amount_component' => '',
       'amount_mapping' => array(),
@@ -37,8 +38,8 @@ function _webform_defaults_webform_stripe() {
  */
 function _webform_edit_webform_stripe($component) {
   // Show notification if keys aren't configured.
-  if (!variable_get('webform_stripe_secret_key', '') || !variable_get('webform_stripe_publishable_key', '')) {
-    drupal_set_message(t('You need to <a href="!url">configure your Stripe settings</a>.', array(
+  if (!variable_get('webform_stripe_test_secret_key', '') || !variable_get('webform_stripe_test_publishable_key', '') || !variable_get('webform_stripe_live_secret_key', '') || !variable_get('webform_stripe_live_publishable_key', '')) {
+    drupal_set_message(t('You need to <a href="!url">configure your Stripe API keys</a>.', array(
       '!url' => url('admin/config/services/webform-stripe'),
     )), 'warning');
   }
@@ -54,6 +55,17 @@ function _webform_edit_webform_stripe($component) {
       }
     }
   }
+
+  // Test mode.
+  $form['test_mode'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Test mode'),
+    '#description' => t('When enabled, the test API keys are used and the payment will not actually be charged. You can use <a href="!url">these test credit cards</a>.', array(
+      '!url' => url('https://stripe.com/docs/testing#cards'),
+    )),
+    '#default_value' => $component['extra']['test_mode'],
+    '#parents' => array('extra', 'test_mode'),
+  );
 
   // Amount.
   $form['amount'] = array(

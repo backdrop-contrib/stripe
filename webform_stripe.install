@@ -31,7 +31,7 @@ function webform_stripe_requirements($phase) {
     }
 
     // Check for Stripe keys.
-    if (variable_get('webform_stripe_secret_key', '') && variable_get('webform_stripe_publishable_key', '')) {
+    if (variable_get('webform_stripe_test_secret_key', '') && variable_get('webform_stripe_test_publishable_key', '') && variable_get('webform_stripe_live_secret_key', '') && variable_get('webform_stripe_live_publishable_key', '')) {
       $requirements['webform_stripe_keys'] = array(
         'title' => $t('Stripe API keys'),
         'value' => $t('Configured'),
@@ -58,8 +58,10 @@ function webform_stripe_requirements($phase) {
  */
 function webform_stripe_uninstall() {
   // Delete variables.
-  variable_del('webform_stripe_secret_key');
-  variable_del('webform_stripe_publishable_key');
+  variable_del('webform_stripe_test_secret_key');
+  variable_del('webform_stripe_test_publishable_key');
+  variable_del('webform_stripe_live_secret_key');
+  variable_del('webform_stripe_live_publishable_key');
   variable_del('webform_stripe_checkout_settings');
 
   // Delete Stripe Payment components and their data from webforms.
@@ -100,4 +102,17 @@ function webform_stripe_update_7001() {
       ':cid' => $component->cid,
     ));
   }
+}
+
+/**
+ * Converts old API keys to live keys.
+ */
+function webform_stripe_update_7002() {
+  variable_set('webform_stripe_live_secret_key', variable_get('webform_stripe_secret_key', ''));
+  variable_set('webform_stripe_live_publishable_key', variable_get('webform_stripe_publishable_key', ''));
+  variable_del('webform_stripe_secret_key');
+  variable_del('webform_stripe_publishable_key');
+  drupal_set_message(t('Each webform can now use either test or live API keys, so the existing API keys were converted to live keys. You can <a href="!url">set your test API keys</a> and configure each webform to use either test or live keys.', array(
+    '!url' => url('admin/config/services/webform-stripe'),
+  )), 'warning');
 }
