@@ -197,7 +197,7 @@ function webform_stripe_checkout_settings_js($component, $data) {
       continue;
     }
 
-    $settings[$key] = check_plain($setting);
+    $settings[$key] = $setting;
   }
 
   return $settings;
