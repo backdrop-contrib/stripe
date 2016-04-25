@@ -112,7 +112,80 @@ function webform_stripe_update_7002() {
   variable_set('webform_stripe_live_publishable_key', variable_get('webform_stripe_publishable_key', ''));
   variable_del('webform_stripe_secret_key');
   variable_del('webform_stripe_publishable_key');
-  drupal_set_message(t('Each webform can now use either test or live API keys, so the existing API keys were converted to live keys. You can <a href="!url">set your test API keys</a> and configure each webform to use either test or live keys.', array(
+
+  return t('Each webform can now use either test or live API keys, so the existing API keys were converted to live keys. You should <a href="!url">set your test API keys</a>, and then configure each webform to use either test or live keys.', array(
     '!url' => url('admin/config/services/webform-stripe'),
-  )), 'warning');
+  ));
+}
+
+/**
+ * Updates Stripe component settings and how charges are stored.
+ */
+function webform_stripe_update_7003() {
+  $components = db_query("SELECT * FROM {webform_component} WHERE type = 'webform_stripe'")->fetchAll();
+  foreach ($components as $component) {
+    // Convert old settings to new format.
+    $extra = unserialize($component->extra);
+    if (isset($extra['webform_stripe']['amount'])) {
+      $extra['amount_value'] = $extra['webform_stripe']['amount'];
+    }
+    if (isset($extra['webform_stripe']['description'])) {
+      $extra['description_value'] = $extra['webform_stripe']['description'];
+    }
+    if (isset($extra['webform_stripe']['panel-label'])) {
+      $extra['panel_label'] = $extra['webform_stripe']['panel-label'];
+    }
+    if (isset($extra['webform_stripe']['email'])) {
+      $extra['email_type'] = $extra['webform_stripe']['email'];
+    }
+    unset($extra['webform_stripe']);
+    if (isset($extra['amount_type']) && $extra['amount_type'] === 'component') {
+      $extra['amount_type'] = 'value_component';
+    }
+    if (isset($extra['amount_component'])) {
+      $extra['amount_value_component'] = $extra['amount_component'];
+    }
+    if (isset($extra['amount_mapping'])) {
+      $extra['amount_value_mapping'] = $extra['amount_mapping'];
+    }
+    if (isset($extra['amount_multiplier'])) {
+      $extra['amount_value_multiplier'] = $extra['amount_multiplier'];
+    }
+    unset($extra['amount_component'], $extra['amount_mapping'], $extra['amount_multiplier']);
+    if ($extra['description_type'] === 'component') {
+      $extra['description_type'] = 'value_component';
+    }
+    if (isset($extra['description_component'])) {
+      $extra['description_value_component'] = $extra['description_component'];
+    }
+    if (isset($extra['description_mapping'])) {
+      $extra['description_value_mapping'] = $extra['description_mapping'];
+    }
+    unset($extra['description_component'], $extra['description_mapping']);
+    db_query("UPDATE {webform_component} SET extra = :extra WHERE nid = :nid AND cid = :cid", array(
+      ':extra' => serialize($extra),
+      ':nid' => $component->nid,
+      ':cid' => $component->cid,
+    ));
+
+    // Update how charges are stored.
+    $submissions = db_query("SELECT * FROM {webform_submitted_data} WHERE nid = :nid AND cid = :cid", array(
+      ':nid' => $component->nid,
+      ':cid' => $component->cid,
+    ));
+    foreach ($submissions as $submission) {
+      if (substr($submission->data, 0, 3) === 'ch_') {
+        $submission->data = array(
+          'test' => isset($extra['test_mode']) ? $extra['test_mode'] : FALSE,
+          'charge' => $submission->data,
+        );
+        db_query("UPDATE {webform_submitted_data} SET data = :data WHERE nid = :nid AND sid = :sid AND cid = :cid", array(
+          ':data' => serialize($submission->data),
+          ':nid' => $submission->nid,
+          ':sid' => $submission->sid,
+          ':cid' => $submission->cid,
+        ));
+      }
+    }
+  }
 }
