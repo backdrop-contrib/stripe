@@ -623,7 +623,7 @@ function _webform_render_webform_stripe($component, $value = NULL, $filter = TRU
   // and email. After saving, it will store the Stripe charge ID.
   $element = array(
     '#type' => 'hidden',
-    '#attributes' => array('class' => 'webform-stripe-token'),
+    '#attributes' => array('class' => array('webform-stripe-token')),
     '#theme_wrappers' => array('webform_element'),
     '#weight' => $component['weight'],
     '#attached' => array(
