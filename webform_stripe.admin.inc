@@ -16,21 +16,75 @@ function webform_stripe_settings_form() {
     '#type' => 'textfield',
     '#title' => t('Test Secret Key'),
     '#default_value' => variable_get('webform_stripe_test_secret_key', ''),
+    '#required' => TRUE,
   );
   $form['keys']['webform_stripe_test_publishable_key'] = array(
     '#type' => 'textfield',
     '#title' => t('Test Publishable Key'),
     '#default_value' => variable_get('webform_stripe_test_publishable_key', ''),
+    '#required' => TRUE,
   );
   $form['keys']['webform_stripe_live_secret_key'] = array(
     '#type' => 'textfield',
     '#title' => t('Live Secret Key'),
     '#default_value' => variable_get('webform_stripe_live_secret_key', ''),
+    '#required' => TRUE,
   );
   $form['keys']['webform_stripe_live_publishable_key'] = array(
     '#type' => 'textfield',
     '#title' => t('Live Publishable Key'),
     '#default_value' => variable_get('webform_stripe_live_publishable_key', ''),
+    '#required' => TRUE,
+  );
+
+  // Image type.
+  $form['image'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Default image'),
+  );
+  $form['image']['webform_stripe_default_image_type'] = array(
+    '#type' => 'radios',
+    '#title' => t('Image type'),
+    '#options' => array(
+      'none' => t('No image'),
+      'file' => t('Custom image upload'),
+      'url' => t('Custom image URL'),
+    ),
+    '#default_value' => variable_get('webform_stripe_default_image_type', 'none'),
+    '#required' => TRUE,
+  );
+
+  // Image upload.
+  $form['image']['webform_stripe_default_image_file'] = array(
+    '#type' => 'managed_file',
+    '#title' => t('Image upload'),
+    '#description' => t('Select an png, jpg, or gif image that with a minimum size of 128x128px.'),
+    '#default_value' => variable_get('webform_stripe_default_image_file', ''),
+    '#upload_validators' => array(
+      'file_validate_image_resolution' => array(0, '128x128'),
+      'file_validate_extensions' => array('png jpg gif'),
+    ),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="webform_stripe_default_image_type"]' => array('value' => 'file'),
+      ),
+    ),
+  );
+  if (module_exists('media')) {
+    $form['image']['webform_stripe_default_image_file']['#type'] = 'media';
+  }
+
+  // Image URL.
+  $form['image']['webform_stripe_default_image_url'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Image URL'),
+    '#description' => t('Enter an external URL or an internal path to a square image of your brand or product. It should be a png, jpg, or gif image with a minimum size of 128x128px.'),
+    '#default_value' => variable_get('webform_stripe_default_image_url', ''),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="webform_stripe_default_image_type"]' => array('value' => 'url'),
+      ),
+    ),
   );
 
   // Checkout settings.
@@ -45,12 +99,6 @@ function webform_stripe_settings_form() {
     '#title' => t('Name'),
     '#description' => t('The name of your company or website.'),
     '#default_value' => $checkout_settings['name'],
-  );
-  $form['webform_stripe_checkout_settings']['image'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Image'),
-    '#description' => t('A relative or absolute URL pointing to a square image of your brand or product. The recommended minimum size is 128x128px. The recommended image types are .gif, .jpeg, and .png.'),
-    '#default_value' => $checkout_settings['image'],
   );
   $form['webform_stripe_checkout_settings']['currency'] = array(
     '#type' => 'textfield',

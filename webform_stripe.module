@@ -81,6 +81,26 @@ function webform_stripe_libraries_info() {
 }
 
 /**
+ * Implements hook_image_default_styles().
+ */
+function webform_stripe_image_default_styles() {
+  $styles['webform_stripe'] = array(
+    'label' => 'Webform Stripe',
+    'effects' => array(
+      array(
+        'name' => 'image_scale_and_crop',
+        'data' => array(
+          'width' => 128,
+          'height' => 128,
+        ),
+        'weight' => 1,
+      ),
+    ),
+  );
+  return $styles;
+}
+
+/**
  * Returns Stripe Checkout settings.
  */
 function webform_stripe_checkout_settings() {

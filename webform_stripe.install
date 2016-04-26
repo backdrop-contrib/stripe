@@ -62,6 +62,9 @@ function webform_stripe_uninstall() {
   variable_del('webform_stripe_test_publishable_key');
   variable_del('webform_stripe_live_secret_key');
   variable_del('webform_stripe_live_publishable_key');
+  variable_del('webform_stripe_default_image_type');
+  variable_del('webform_stripe_default_image_file');
+  variable_del('webform_stripe_default_image_url');
   variable_del('webform_stripe_checkout_settings');
 
   // Delete Stripe Payment components and their data from webforms.
@@ -188,4 +191,17 @@ function webform_stripe_update_7003() {
       }
     }
   }
+}
+
+/**
+ * Updates default image setting.
+ */
+function webform_stripe_update_7004() {
+  $settings = variable_get('webform_stripe_checkout_settings', array());
+  if (!empty($settings['image'])) {
+    variable_set('webform_stripe_default_image_type', 'url');
+    variable_set('webform_stripe_default_image_url', $settings['image']);
+  }
+  unset($settings['image']);
+  variable_set('webform_stripe_checkout_settings', $settings);
 }

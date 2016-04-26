@@ -28,6 +28,9 @@ function _webform_defaults_webform_stripe() {
       'panel_label' => t('Pay {{amount}}'),
       'email_type' => 'user',
       'email_component' => '',
+      'image_type' => 'default',
+      'image_file' => '',
+      'image_url' => '',
       'continue_text' => '',
       'pay_text' => '',
       'cancel_text' => '',
@@ -325,6 +328,7 @@ function _webform_edit_webform_stripe($component) {
       'checkout' => t('Collect email address in Stripe Checkout form'),
     ),
     '#default_value' => $component['extra']['email_type'],
+    '#required' => TRUE,
   );
 
   // Dynamic email, which can be determined by an email component.
@@ -344,6 +348,60 @@ function _webform_edit_webform_stripe($component) {
     '#states' => array(
       'visible' => array(
         ':input[name="extra[email_type]"]' => array('value' => 'component'),
+      ),
+    ),
+  );
+
+  // Image type.
+  $form['image'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Image'),
+    '#collapsible' => TRUE,
+    '#tree' => TRUE,
+    '#parents' => array('extra'),
+  );
+  $form['image']['image_type'] = array(
+    '#type' => 'radios',
+    '#title' => t('Image type'),
+    '#options' => array(
+      'default' => t('Default image'),
+      'file' => t('Custom image upload'),
+      'url' => t('Custom image URL'),
+      'none' => t('No image'),
+    ),
+    '#default_value' => $component['extra']['image_type'],
+    '#required' => TRUE,
+  );
+
+  // Image upload.
+  $form['image']['image_file'] = array(
+    '#type' => 'managed_file',
+    '#title' => t('Image upload'),
+    '#description' => t('Select an png, jpg, or gif image that with a minimum size of 128x128px.'),
+    '#default_value' => $component['extra']['image_file'],
+    '#upload_validators' => array(
+      'file_validate_image_resolution' => array(0, '128x128'),
+      'file_validate_extensions' => array('png jpg gif'),
+    ),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="extra[image_type]"]' => array('value' => 'file'),
+      ),
+    ),
+  );
+  if (module_exists('media')) {
+    $form['image']['image_file']['#type'] = 'media';
+  }
+
+  // Image URL.
+  $form['image']['image_url'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Image URL'),
+    '#description' => t('Enter an external URL or an internal path to a square image of your brand or product. It should be a png, jpg, or gif image with a minimum size of 128x128px.'),
+    '#default_value' => $component['extra']['image_url'],
+    '#states' => array(
+      'visible' => array(
+        ':input[name="extra[image_type]"]' => array('value' => 'url'),
       ),
     ),
   );
@@ -603,6 +661,16 @@ function _webform_edit_webform_stripe_validate($form, &$form_state) {
   if ($form_state['values']['extra']['email_type'] === 'component' && empty($form_state['values']['extra']['email_component'])) {
     form_set_error('extra][email_component', t('Select a component to use for the email address.'));
   }
+
+  // Image file is require is image type is file.
+  if ($form_state['values']['extra']['image_type'] === 'file' && empty($form_state['values']['extra']['image_file'])) {
+    form_set_error('extra][image_file', t('Select a custom image.'));
+  }
+
+  // Image URL is require is image type is URL.
+  if ($form_state['values']['extra']['image_type'] === 'url' && empty($form_state['values']['extra']['image_url'])) {
+    form_set_error('extra][image_url', t('Enter a custom image URL.'));
+  }
 }
 
 /**
@@ -823,13 +891,38 @@ function _webform_stripe_process_checkout_settings($component, $data) {
       break;
   }
 
+  // Merge image default settings.
+  if ($component['extra']['image_type'] === 'default') {
+    $component['extra']['image_type'] = variable_get('webform_stripe_default_image_type', 'none');
+    $component['extra']['image_file'] = variable_get('webform_stripe_default_image_file', '');
+    $component['extra']['image_url'] = variable_get('webform_stripe_default_image_url', '');
+  }
+
+  // Determine image.
+  switch ($component['extra']['image_type']) {
+    // File.
+    case 'file':
+      $file = file_load($component['extra']['image_file']);
+      if ($file) {
+        $settings['image'] = image_style_url('webform_stripe', $file->uri);
+      }
+      break;
+
+    // URL.
+    case 'url':
+      if (!empty($component['extra']['image_url'])) {
+        $settings['image'] = url($component['extra']['image_url']);
+      }
+      break;
+
+    // None.
+    case 'none':
+      $settings['image'] = NULL;
+      break;
+  }
+
   // Prepare for Javascript.
   foreach ($settings as $key => $setting) {
-    // If image is specified, convert to URL.
-    if ($key === 'image' && $setting) {
-      $setting = url($setting);
-    }
-
     // Convert boolean values into strings.
     if (in_array($key, array('billing-address', 'zip-code', 'shipping-address', 'allow-remember-me', 'bitcoin', 'alipay', 'alipay-reusable'))) {
       $setting = $setting ? 'true' : 'false';
