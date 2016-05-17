@@ -83,10 +83,19 @@ function webform_stripe_libraries_info() {
  * Loads Stripe PHP library.
  */
 function webform_stripe_load_library() {
-  // Load only one Stripe PHP library, since other modules put this in one of
-  // two locations (stripe or stripe-php).
   $libraries = libraries_get_libraries();
-  return isset($libraries['stripe']) ? libraries_load('stripe') : libraries_load('stripe-php');
+
+  // If library exists at 'stripe' and is defined by another module (such as
+  // Ubercart Stripe), use it to avoid conflicts with loading multiple Stripe
+  // PHP libraries.
+  if (isset($libraries['stripe'])) {
+    $library = libraries_load('stripe');
+    if ($library['loaded']) {
+      return $library;
+    }
+  }
+
+  return libraries_load('stripe-php');
 }
 
 /**
