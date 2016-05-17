@@ -66,7 +66,6 @@ function webform_stripe_libraries_info() {
       'name' => 'Stripe API Client Library for PHP',
       'vendor url' => 'https://stripe.com',
       'download url' => 'https://github.com/stripe/stripe-php',
-      'dependencies' => array(),
       'version arguments' => array(
         'file' => 'VERSION',
         'pattern' => '/(\d+\.\d+\.\d+)/',
@@ -78,6 +77,16 @@ function webform_stripe_libraries_info() {
       ),
     ),
   );
+}
+
+/**
+ * Loads Stripe PHP library.
+ */
+function webform_stripe_load_library() {
+  // Load only one Stripe PHP library, since other modules put this in one of
+  // two locations (stripe or stripe-php).
+  $libraries = libraries_get_libraries();
+  return isset($libraries['stripe']) ? libraries_load('stripe') : libraries_load('stripe-php');
 }
 
 /**

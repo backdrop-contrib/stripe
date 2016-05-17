@@ -10,7 +10,7 @@ function webform_stripe_requirements($phase) {
     $t = get_t();
 
     // Check for the Stripe PHP library.
-    $stripe = libraries_load('stripe-php');
+    $stripe = webform_stripe_load_library();
     if ($stripe['loaded']) {
       $requirements['webform_stripe_library'] = array(
         'title' => $t('Stripe PHP library'),

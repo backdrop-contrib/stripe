@@ -46,7 +46,7 @@ function _webform_stripe_get_plans($test_mode) {
   $secret_key = $test_mode ? variable_get('webform_stripe_test_secret_key', '') : variable_get('webform_stripe_live_secret_key', '');
 
   // Load list of Stripe plans.
-  if (($library = libraries_load('stripe-php')) && $library['loaded'] && !empty($secret_key)) {
+  if (($library = webform_stripe_load_library()) && $library['loaded'] && !empty($secret_key)) {
     \Stripe\Stripe::setApiKey($secret_key);
     try {
       foreach (\Stripe\Plan::all()->data as $plan) {
@@ -996,7 +996,7 @@ function _webform_stripe_process_token(&$form, &$form_state) {
   list($token, $email) = explode(':', $value);
 
   // Include Stripe library.
-  libraries_load('stripe-php');
+  webform_stripe_load_library();
 
   // Set secret key.
   \Stripe\Stripe::setApiKey($component['extra']['test_mode'] ? variable_get('webform_stripe_test_secret_key', '') : variable_get('webform_stripe_live_secret_key', ''));
