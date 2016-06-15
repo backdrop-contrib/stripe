@@ -1075,12 +1075,13 @@ function _webform_stripe_process_token(&$form, &$form_state) {
 function _webform_display_webform_stripe($component, $value, $format = 'html') {
   if (isset($value[0]) && !empty($value[0]) && substr($value[0], 0, 4) !== 'tok_') {
     $data = unserialize($value[0]);
+    $link = user_access('administer webform stripe') && $format === 'html';
     return array(
       '#type' => 'markup',
       '#title' => $component['name'],
       '#markup' => isset($data['charge'])
-        ? l(t('paid'), 'https://dashboard.stripe.com/' . ($data['test'] ? 'test/' : '') . 'payments/' . $data['charge'])
-        : l(t('subscribed'), 'https://dashboard.stripe.com/' . ($data['test'] ? 'test/' : '') . 'customers/' . $data['customer']),
+        ? ($link ? l(t('paid'), 'https://dashboard.stripe.com/' . ($data['test'] ? 'test/' : '') . 'payments/' . $data['charge']) : t('paid'))
+        : ($link ? l(t('subscribed'), 'https://dashboard.stripe.com/' . ($data['test'] ? 'test/' : '') . 'customers/' . $data['customer']) : t('subscribed')),
       '#weight' => $component['weight'],
       '#theme_wrappers' => $format == 'html' ? array('webform_element') : array('webform_element_text'),
       '#translatable' => array('title'),
