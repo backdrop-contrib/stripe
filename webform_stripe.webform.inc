@@ -140,7 +140,7 @@ function _webform_edit_webform_stripe($component) {
       if ($other_component['type'] === 'select' && $other_component['extra']['multiple']) {
         continue;
       }
-      $amount_components[$other_component['cid']] = check_plain($other_component['name']);
+      $amount_components[$other_component['cid']] = $other_component['name'];
     }
   }
   $form['amount']['amount_value_component'] = array(
@@ -205,7 +205,7 @@ function _webform_edit_webform_stripe($component) {
   $plan_components = array();
   foreach ($node->webform['components'] as $other_component) {
     if ($other_component['type'] === 'select' && !$other_component['extra']['multiple']) {
-      $plan_components[$other_component['cid']] = check_plain($other_component['name']);
+      $plan_components[$other_component['cid']] = $other_component['name'];
     }
   }
   $form['amount']['amount_plan_component'] = array(
@@ -280,7 +280,7 @@ function _webform_edit_webform_stripe($component) {
       if ($other_component['type'] === 'select' && $other_component['extra']['multiple']) {
         continue;
       }
-      $description_components[$other_component['cid']] = check_plain($other_component['name']);
+      $description_components[$other_component['cid']] = $other_component['name'];
     }
   }
   $form['description']['description_value_component'] = array(
@@ -335,7 +335,7 @@ function _webform_edit_webform_stripe($component) {
   $email_components = array();
   foreach ($node->webform['components'] as $other_component) {
     if (in_array($other_component['type'], array('email'))) {
-      $email_components[$other_component['cid']] = check_plain($other_component['name']);
+      $email_components[$other_component['cid']] = $other_component['name'];
     }
   }
   $form['email']['email_component'] = array(
