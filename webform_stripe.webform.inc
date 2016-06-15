@@ -717,8 +717,8 @@ function _webform_stripe_form_webform_client_form_alter(&$form, &$form_state) {
       // New submission.
       if (empty($form['#submission'])) {
         // Wrap form with ID so we can replace it via ajax.
-        $id = drupal_html_id('webform-stripe-form');
-        $form['#prefix'] = '<div id="' . $id . '">';
+        $form['#webform_stripe_html_id'] = drupal_html_id('webform-stripe-form');
+        $form['#prefix'] = '<div id="' . $form['#webform_stripe_html_id'] . '">';
         $form['#suffix'] = '</div>';
 
         // Hide Submit button and add our Continue button.
@@ -731,7 +731,7 @@ function _webform_stripe_form_webform_client_form_alter(&$form, &$form_state) {
             '#weight' => 15,
             '#ajax' => array(
               'callback' => '_webform_stripe_form_webform_client_form_ajax_callback',
-              'wrapper' => $id,
+              'wrapper' => $form['#webform_stripe_html_id'],
             ),
           );
         }
@@ -771,7 +771,7 @@ function _webform_stripe_form_webform_client_form_alter(&$form, &$form_state) {
             '#attributes' => array('class' => array('webform-stripe-cancel')),
             '#ajax' => array(
               'callback' => '_webform_stripe_form_webform_client_form_ajax_callback',
-              'wrapper' => $id,
+              'wrapper' => $form['#webform_stripe_html_id'],
             ),
           );
         }
@@ -812,7 +812,21 @@ function _webform_stripe_form_webform_client_form_alter(&$form, &$form_state) {
  * Webform ajax callback.
  */
 function _webform_stripe_form_webform_client_form_ajax_callback($form, $form_state) {
-  return $form;
+  // Instead of simply returning $form, we also want to scroll to the top of
+  // the form, so the ajax commands have to be built manually.
+  // See ajax_prepare_response().
+  return array(
+    '#type' => 'ajax',
+    '#commands' => array(
+      ajax_command_insert(NULL, drupal_render($form)),
+      ajax_command_prepend(NULL, theme('status_messages')),
+      array(
+        'command' => 'webformStripeScroll',
+        'selector' => '#' . $form['#webform_stripe_html_id'],
+        'duration' => 500,
+      ),
+    ),
+  );
 }
 
 /**
