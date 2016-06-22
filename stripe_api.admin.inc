@@ -75,7 +75,33 @@ function stripe_api_admin_settings_form($form, $form_state) {
     );
   }
 
-  return system_settings_form($form);
+  $form['actions']['#type'] = 'actions';
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save configuration'),
+  );
+  
+  return $form;
+}
+
+/**
+ * Submit handler for stripe_checkout_admin_form().
+ */
+function stripe_checkout_admin_form_submit($form, &$form_state) {
+  $config = config('stripe_api.settings');
+  $secretconfig = config('stripe_api_secret.settings');
+  $values = $form_state['values'];
+
+  $config->set('stripe_api_mode' , $values['stripe_api_mode']);
+  $config->set('stripe_api_test_public_key' , $values['stripe_api_test_public_key']);
+  $config->set('stripe_api_live_public_key' , $values['stripe_api_live_public_key']);
+  $secretconfig->set('stripe_api_test_secret_key' , $values['stripe_api_test_secret_key']);
+  $secretconfig->set('stripe_api_live_secret_key' , $values['stripe_api_live_secret_key']);
+  $config->set('stripe_api_log_webhooks' , $values['stripe_api_log_webhooks']);
+  $config->save();
+  $secretconfig->save();
+
+  backdrop_set_message(t('Stripe API settings have been saved.'));
 }
 
 /**
