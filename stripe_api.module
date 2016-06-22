@@ -57,8 +57,10 @@ function _stripe_api_process_incoming_webhook() {
   }
 
   // Invoke webhooks for others to use.
-  module_invoke_all('stripe_api_webhook', $event_json->type, $event_json->data, $event);
-  module_invoke_all('stripe_api_webhook_' . str_replace('.', '_', $event_json->type), $event_json->data, $event);
+  if (isset($event_json)) {
+    module_invoke_all('stripe_api_webhook', $event_json->type, $event_json->data, $event);
+    module_invoke_all('stripe_api_webhook_' . str_replace('.', '_', $event_json->type), $event_json->data, $event);
+  }
   print 'okay';
 }
 
