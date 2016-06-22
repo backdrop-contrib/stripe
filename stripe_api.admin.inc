@@ -8,6 +8,7 @@
  * Stripe API admin settings form.
  */
 function stripe_api_admin_settings_form($form, $form_state) {
+  $config = config('stripe_api.settings');
   $form['stripe_api_link'] = array(
     '#markup' => t('!dashboard | !api_keys | !docs<br /><br />', array(
       '!dashboard' => l(t('Dashboard'), 'https://dashboard.stripe.com', array('attributes' => array('target' => '_blank'))),
@@ -18,22 +19,22 @@ function stripe_api_admin_settings_form($form, $form_state) {
   $form['stripe_api_test_secret_key'] = array(
     '#type' => 'textfield',
     '#title' => t('Stripe Secret Key (test)'),
-    '#default_value' => variable_get('stripe_api_test_secret_key', ''),
+    '#default_value' => $config->get('stripe_api_test_secret_key'),
   );
   $form['stripe_api_test_public_key'] = array(
     '#type' => 'textfield',
     '#title' => t('Stripe Public Key (test)'),
-    '#default_value' => variable_get('stripe_api_test_public_key', ''),
+    '#default_value' => $config->get('stripe_api_test_public_key'),
   );
   $form['stripe_api_live_secret_key'] = array(
     '#type' => 'textfield',
     '#title' => t('Stripe Secret Key (live)'),
-    '#default_value' => variable_get('stripe_api_live_secret_key', ''),
+    '#default_value' => $config->get('stripe_api_live_secret_key'),
   );
   $form['stripe_api_live_public_key'] = array(
     '#type' => 'textfield',
     '#title' => t('Stripe Public Key (live)'),
-    '#default_value' => variable_get('stripe_api_live_public_key', ''),
+    '#default_value' => $config->get('stripe_api_live_public_key'),
   );
   $form['stripe_api_mode'] = array(
     '#type' => 'radios',
@@ -42,7 +43,7 @@ function stripe_api_admin_settings_form($form, $form_state) {
       'test' => t('Test'),
       'live' => t('Live'),
     ),
-    '#default_value' => variable_get('stripe_api_mode', 'test'),
+    '#default_value' => $config->get('stripe_api_mode'),
   );
 
   $form['stripe_api_webhook_url'] = array(
@@ -58,7 +59,7 @@ function stripe_api_admin_settings_form($form, $form_state) {
   $form['stripe_api_log_webhooks'] = array(
     '#type' => 'checkbox',
     '#title' => t('Log incoming webhooks'),
-    '#default_value' => variable_get('stripe_api_log_webhooks', TRUE),
+    '#default_value' => $config->get('stripe_api_log_webhooks'),
   );
 
   if (_stripe_api_secret_key()) {

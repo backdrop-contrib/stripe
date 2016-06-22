@@ -21,7 +21,7 @@
 function hook_stripe_api_webhook($type, $data, Stripe\Event $event = NULL) {
   switch ($type) {
     case 'customer.created':
-      // Create a new Drupal user for this customer.
+      // Create a new Backdrop user for this customer.
       $email = $data->object->email;
       if (!user_load_by_mail($email)) {
         user_save(NULL, array(

@@ -19,9 +19,9 @@ function stripe_api_requirements($phase) {
           'title' => $t('Stripe PHP Library'),
           'value' => $t('Missing!'),
           'severity' => REQUIREMENT_ERROR,
-          'description' => $t('Stripe library missing. Download the Stripe library from <a href="!url">!url</a> and place it at %path.<br/>You can also run <b><code>drush stripe-api-download</code></b> to automatically get the library.', array(
+          'description' => $t('Stripe library missing. Download the Stripe library from <a href="!url">!url</a> and place it at %path.', array(
             '!url' => $stripe['download url'],
-            '%path' => 'sites/all/libraries/stripe',
+            '%path' => 'libraries/stripe',
           )),
         );
       }

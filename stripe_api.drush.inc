@@ -58,12 +58,12 @@ function stripe_api_drush_command() {
 function drush_stripe_api($obj, $method, $params = NULL) {
   if (!$params && drush_get_option('params')) {
     $params = drush_get_option('params');
-    $params = drupal_get_query_array($params);
+    $params = backdrop_get_query_array($params);
   }
   $stripe_object = stripe_api_call($obj, $method, $params);
   if ($stripe_object) {
     if ($update = drush_get_option('update')) {
-      $update = drupal_get_query_array($update);
+      $update = backdrop_get_query_array($update);
       foreach ($update as $key => $val) {
         $stripe_object->$key = $val;
       }
@@ -85,15 +85,15 @@ function drush_stripe_api($obj, $method, $params = NULL) {
  * Command callback for drush_stripe_library_download.
  */
 function drush_stripe_api_download() {
-  $destination = DRUPAL_ROOT . '/sites/all/libraries';
+  $destination = BACKDROP_ROOT . '/libraries';
   drush_log($destination);
 
-  // Create sites/all/libraries if necessary.
+  // Create libraries directory if necessary.
   if (!is_dir($destination)) {
-    drush_log(dt('The sites/all/libraries directory does not exist.'), 'warning');
+    drush_log(dt('The libraries directory does not exist.'), 'warning');
     $confirm = drush_confirm(dt('Would you like to create it?'));
     if (!$confirm || !drush_mkdir($destination)) {
-      drush_log(dt('Unable to download Stripe to sites/all/libraries.'), 'error');
+      drush_log(dt('Unable to download Stripe to the libraries directory.'), 'error');
       return FALSE;
     }
   }
@@ -108,16 +108,16 @@ function drush_stripe_api_download() {
     return FALSE;
   }
 
-  // Now move the directory to sites/all/libraries/stripe.
+  // Now move the directory to libraries/stripe.
   $directory = reset($file_list);
   if (!drush_move_dir("$destination/$directory", "$destination/stripe", TRUE)) {
-    drush_log(dt('Unable to move the Stripe PHP Library to sites/all/libraries/stripe'), 'error');
+    drush_log(dt('Unable to move the Stripe PHP Library to libraries/stripe'), 'error');
     return FALSE;
   }
 
   // Parse the version number from the original directory.
   $version = str_replace('stripe-php-', '', $directory);
   $dt_args = array('@version' => rtrim($version, '/'));
-  $message = dt('Copied the Stripe PHP Library version @version to sites/all/libraries/stripe.', $dt_args);
+  $message = dt('Copied the Stripe PHP Library version @version to /libraries/stripe.', $dt_args);
   drush_log($message, 'success');
 }

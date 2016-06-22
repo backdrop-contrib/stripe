@@ -15,7 +15,7 @@ function stripe_api_menu() {
   $items['admin/config/services/stripe_api'] = array(
     'type' => MENU_NORMAL_ITEM,
     'title' => 'Stripe API Settings',
-    'page callback' => 'drupal_get_form',
+    'page callback' => 'backdrop_get_form',
     'page arguments' => array('stripe_api_admin_settings_form'),
     'file' => 'stripe_api.admin.inc',
     'access arguments' => array('edit stripe api settings'),
@@ -41,16 +41,15 @@ function _stripe_api_process_incoming_webhook() {
   $input = file_get_contents("php://input");
   $event_json = json_decode($input);
   $event = NULL;
-
   // Validate the webhook if we are in LIVE mode.
-  if (variable_get('stripe_api_mode', 'test') === 'live' && ($event_json->livemode == TRUE || $event_json->id !== 'evt_00000000000000')) {
+  if (config_get('stripe_api.settings','stripe_api_mode') === 'live' && ($event_json->livemode == TRUE || $event_json->id !== 'evt_00000000000000')) {
     $event = stripe_api_call('event', 'retrieve', $event_json->id);
     if (!$event) {
       watchdog('stripe_api', 'Invalid webhook event: @data', array(
         '@data' => $input,
       ), WATCHDOG_ERROR);
       // This webhook event is invalid.
-      drupal_add_http_header('Status', '403 Forbidden');
+      backdrop_add_http_header('Status', '403 Forbidden');
       print 'Forbidden';
       exit;
     }
@@ -70,7 +69,7 @@ function _stripe_api_process_incoming_webhook() {
  * Log incoming webhooks.
  */
 function stripe_api_stripe_api_webhook($type, $data, Stripe\Event $event = NULL) {
-  if (variable_get('stripe_api_log_webhooks', TRUE)) {
+  if (config_get('stripe_api.settings','stripe_api_log_webhooks')) {
     watchdog('stripe_api', 'Processed webhook: @name<br /><br />Data: @data', array(
       '@name' => $type,
       '@data' => json_encode($data),
@@ -125,10 +124,11 @@ function stripe_api_libraries_postload_callback($library, $version = NULL, $vari
  *   Returns the secret key.
  */
 function _stripe_api_secret_key($mode = '') {
+  $config = config('stripe_api.settings');
   if (!$mode) {
-    $mode = variable_get('stripe_api_mode');
+    $mode = $config->get('stripe_api_mode');
   }
-  return variable_get('stripe_api_' . $mode . '_secret_key');
+  return $config->get('stripe_api_' . $mode . '_secret_key');
 }
 
 /**
@@ -141,8 +141,9 @@ function _stripe_api_secret_key($mode = '') {
  *   Returns the public key.
  */
 function _stripe_api_public_key($mode = '') {
+  $config = config('stripe_api.settings');
   if (!$mode) {
-    $mode = variable_get('stripe_api_mode');
+    $mode = $config->get('stripe_api_mode');
   }
-  return variable_get('stripe_api_' . $mode . '_public_key');
+  return $config->get('stripe_api_' . $mode . '_public_key');
 }

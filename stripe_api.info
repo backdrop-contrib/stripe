@@ -1,6 +1,6 @@
 name = Stripe API
-description = Provides an integration to use the Stripe API library
-core = 7.x
+description = Provides an integration to use the Stripe API library.
+backdrop = 1.x
 package = Stripe
 
 dependencies[] = libraries
