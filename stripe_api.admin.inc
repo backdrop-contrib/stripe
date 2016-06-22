@@ -9,6 +9,7 @@
  */
 function stripe_api_admin_settings_form($form, $form_state) {
   $config = config('stripe_api.settings');
+  $secretconfig = config('stripe_api_secret.settings');
   $form['stripe_api_link'] = array(
     '#markup' => t('!dashboard | !api_keys | !docs<br /><br />', array(
       '!dashboard' => l(t('Dashboard'), 'https://dashboard.stripe.com', array('attributes' => array('target' => '_blank'))),
@@ -19,7 +20,7 @@ function stripe_api_admin_settings_form($form, $form_state) {
   $form['stripe_api_test_secret_key'] = array(
     '#type' => 'textfield',
     '#title' => t('Stripe Secret Key (test)'),
-    '#default_value' => $config->get('stripe_api_test_secret_key'),
+    '#default_value' => $secretconfig->get('stripe_api_test_secret_key'),
   );
   $form['stripe_api_test_public_key'] = array(
     '#type' => 'textfield',
@@ -29,7 +30,7 @@ function stripe_api_admin_settings_form($form, $form_state) {
   $form['stripe_api_live_secret_key'] = array(
     '#type' => 'textfield',
     '#title' => t('Stripe Secret Key (live)'),
-    '#default_value' => $config->get('stripe_api_live_secret_key'),
+    '#default_value' => $secretconfig->get('stripe_api_live_secret_key'),
   );
   $form['stripe_api_live_public_key'] = array(
     '#type' => 'textfield',
@@ -85,13 +86,13 @@ function stripe_api_admin_settings_form($form, $form_state) {
 }
 
 /**
- * Submit handler for stripe_checkout_admin_form().
+ * Submit handler for stripe_checkout_admin_settings_form().
  */
-function stripe_checkout_admin_form_submit($form, &$form_state) {
+function stripe_api_admin_settings_form_submit($form, &$form_state) {
   $config = config('stripe_api.settings');
   $secretconfig = config('stripe_api_secret.settings');
   $values = $form_state['values'];
-
+  
   $config->set('stripe_api_mode' , $values['stripe_api_mode']);
   $config->set('stripe_api_test_public_key' , $values['stripe_api_test_public_key']);
   $config->set('stripe_api_live_public_key' , $values['stripe_api_live_public_key']);
