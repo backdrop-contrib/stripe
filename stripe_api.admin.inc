@@ -19,22 +19,22 @@ function stripe_api_admin_settings_form($form, $form_state) {
   );
   $form['stripe_api_test_secret_key'] = array(
     '#type' => 'textfield',
-    '#title' => t('Stripe Secret Key (test)'),
+    '#title' => t('Test Secret Key'),
     '#default_value' => $secretconfig->get('stripe_api_test_secret_key'),
   );
   $form['stripe_api_test_public_key'] = array(
     '#type' => 'textfield',
-    '#title' => t('Stripe Public Key (test)'),
+    '#title' => t('Test Publishable Key'),
     '#default_value' => $config->get('stripe_api_test_public_key'),
   );
   $form['stripe_api_live_secret_key'] = array(
     '#type' => 'textfield',
-    '#title' => t('Stripe Secret Key (live)'),
+    '#title' => t('Live Secret Key'),
     '#default_value' => $secretconfig->get('stripe_api_live_secret_key'),
   );
   $form['stripe_api_live_public_key'] = array(
     '#type' => 'textfield',
-    '#title' => t('Stripe Public Key (live)'),
+    '#title' => t('Live Publishable Key'),
     '#default_value' => $config->get('stripe_api_live_public_key'),
   );
   $form['stripe_api_mode'] = array(
