@@ -49,7 +49,7 @@ function _stripe_api_process_incoming_webhook() {
         '@data' => $input,
       ), WATCHDOG_ERROR);
       // This webhook event is invalid.
-      backdrop_add_http_header('Status', '403 Forbidden');
+      drupal_add_http_header('Status', '403 Forbidden');
       print 'Forbidden';
       exit;
     }
@@ -124,11 +124,10 @@ function stripe_api_libraries_postload_callback($library, $version = NULL, $vari
  *   Returns the secret key.
  */
 function _stripe_api_secret_key($mode = '') {
-  $config = config('stripe_api.settings');
   if (!$mode) {
-    $mode = $config->get('stripe_api_mode');
+    $mode = config_get('stripe_api.settings','stripe_api_mode');
   }
-  return $config->get('stripe_api_' . $mode . '_secret_key');
+  return config_get('stripe_api_secret.settings','stripe_api_' . $mode . '_secret_key');
 }
 
 /**
