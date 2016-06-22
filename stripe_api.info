@@ -2,6 +2,7 @@ name = Stripe API
 description = Provides an integration to use the Stripe API library.
 backdrop = 1.x
 package = Stripe
+type = module
 
 dependencies[] = libraries
 
