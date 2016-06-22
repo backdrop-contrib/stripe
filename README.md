@@ -13,7 +13,7 @@ module is designed to be required by other contrib/custom modules.
 
 - Once the dependencies are in place, install this module using the [official 
   Backdrop CMS instructions](https://backdropcms.org/guide/modules).
-- Configure the module at *Configuration > Web Services > Stripe API Settings*
+- Configure the module at *Configuration > Web Services > Stripe*
   (`admin/config/services/stripe_api`), adding your Stripe API keys and 
   setting preferences.
   

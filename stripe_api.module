@@ -14,7 +14,7 @@ define('STRIPE_API_CHECKOUT_JS', 'https://checkout.stripe.com/checkout.js');
 function stripe_api_menu() {
   $items['admin/config/services/stripe_api'] = array(
     'type' => MENU_NORMAL_ITEM,
-    'title' => 'Stripe API Settings',
+    'title' => 'Stripe',
     'page callback' => 'backdrop_get_form',
     'page arguments' => array('stripe_api_admin_settings_form'),
     'file' => 'stripe_api.admin.inc',
@@ -22,7 +22,7 @@ function stripe_api_menu() {
     'description' => 'Edit Stripe API credentials.',
   );
   $items['admin/config/services/stripe_api/settings'] = array(
-    'title' => 'Stripe',
+    'title' => 'API Settings',
     'type' => MENU_DEFAULT_LOCAL_TASK,
     'weight' => -10,
   );
