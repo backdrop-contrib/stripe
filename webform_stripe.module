@@ -72,7 +72,7 @@ function webform_stripe_libraries_info() {
       ),
       'files' => array(
         'php' => array(
-          'lib/Stripe.php',
+          'init.php',
         ),
       ),
     ),
