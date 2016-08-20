@@ -8,7 +8,7 @@
     // Panels pane.
     var $el = $(response.selector).closest('.block.block-webform');
     if (!$el.length) {
-      $el = $(response.selector).closest('.panel-pane.pane-block[class*="pane-webform-client-block-"');
+      $el = $(response.selector).closest('.panel-pane.pane-block[class*="pane-webform-client-block-"]');
       if (!$el.length) {
         $el = $(response.selector);
       }
