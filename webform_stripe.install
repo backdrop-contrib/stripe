@@ -205,3 +205,47 @@ function webform_stripe_update_7004() {
   unset($settings['image']);
   variable_set('webform_stripe_checkout_settings', $settings);
 }
+
+/**
+ * Retrieves amount values from Stripe for existing charges.
+ */
+function webform_stripe_update_7005() {
+  // Include Stripe library.
+  $library = webform_stripe_load_library();
+  if (!$library['loaded']) {
+    throw new DrupalUpdateException('The Stripe PHP API library is missing.');
+  }
+
+  // Ensure API keys.
+  if (!variable_get('webform_stripe_test_secret_key', '') || !variable_get('webform_stripe_live_secret_key', '')) {
+    throw new DrupalUpdateException('You need to configure your Stripe API secret keys.');
+  }
+
+  // Find all Webform Stripe submitted data.
+  $submitted_data = db_query("SELECT d.*
+    FROM {webform_component} c
+    INNER JOIN {webform_submitted_data} d ON d.nid = c.nid AND d.cid = c.cid
+    WHERE c.type = 'webform_stripe'")->fetchAll();
+
+  // For each submission, if it was a charge (not a subscription) and the
+  // amount is not set, then retrieve the amount and currency for that charge
+  // from Stripe.
+  foreach ($submitted_data as $data) {
+    $value = unserialize($data->data);
+    if (!empty($value['charge']) && !isset($value['amount'])) {
+      \Stripe\Stripe::setApiKey(!empty($value['test']) ? variable_get('webform_stripe_test_secret_key', '') : variable_get('webform_stripe_live_secret_key', ''));
+      $charge = \Stripe\Charge::retrieve($value['charge']);
+      $value['amount'] = $charge->amount;
+      $value['currency'] = $charge->currency;
+      db_query("UPDATE {webform_submitted_data}
+        SET data = :data
+        WHERE nid = :nid AND sid = :sid AND cid = :cid AND no = :no", array(
+          ':data' => serialize($value),
+          ':nid' => $data->nid,
+          ':sid' => $data->sid,
+          ':cid' => $data->cid,
+          ':no' => $data->no,
+        ));
+    }
+  }
+}

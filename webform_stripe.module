@@ -193,3 +193,44 @@ function webform_stripe_form_webform_configure_form_alter(&$form, &$form_state) 
     }
   }
 }
+
+/**
+ * Attempts to format a Stripe charge amount in a format that makes sense for
+ * the currency. There's probably a better way to manage this, and it would be
+ * even better if the Stripe PHP API offered a way to do this.
+ *
+ * @see https://github.com/stripe/stripe-php/issues/286
+ * @see https://support.stripe.com/questions/which-currencies-does-stripe-support
+ */
+function webform_stripe_format_amount($amount, $currency) {
+  $currency = strtoupper($currency);
+
+  switch ($currency) {
+    // US dollar.
+    case 'USD':
+      return '$' . number_format($amount / 100, 2) . ' ' . $currency;
+
+    // Zero-decimal currencies.
+    // https://support.stripe.com/questions/which-zero-decimal-currencies-does-stripe-support
+    case 'BIF':
+    case 'CLP':
+    case 'DJF':
+    case 'GNF':
+    case 'JPY':
+    case 'KMF':
+    case 'KRW':
+    case 'MGA':
+    case 'PYG':
+    case 'RWF':
+    case 'VND':
+    case 'VUV':
+    case 'XAF':
+    case 'XOF':
+    case 'XPF':
+      return $amount . ' ' . $currency;
+
+    // Other currencies which use decimals. This needs work.
+    default:
+      return number_format($amount / 100, 2) . ' ' . $currency;
+  }
+}

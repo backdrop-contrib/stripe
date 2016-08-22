@@ -1033,7 +1033,7 @@ function _webform_stripe_process_token(&$form, &$form_state) {
       );
     }
 
-    // Charge a one-time amount, and save the charge ID.
+    // Charge a one-time amount, and save the charge ID, amount, and currency.
     else {
       $charge = \Stripe\Charge::create(array(
         'source' => $token,
@@ -1048,6 +1048,8 @@ function _webform_stripe_process_token(&$form, &$form_state) {
       $value = array(
         'test' => $component['extra']['test_mode'],
         'charge' => $charge->id,
+        'amount' => $charge->amount,
+        'currency' => $settings['currency'],
       );
     }
   }
@@ -1076,12 +1078,15 @@ function _webform_display_webform_stripe($component, $value, $format = 'html') {
   if (isset($value[0]) && !empty($value[0]) && substr($value[0], 0, 4) !== 'tok_') {
     $data = unserialize($value[0]);
     $link = user_access('administer webform stripe') && $format === 'html';
+    $text = isset($data['charge'])
+      ? !empty($data['amount']) ? webform_stripe_format_amount($data['amount'], $data['currency']) : t('paid')
+      : t('subscribed');
     return array(
       '#type' => 'markup',
       '#title' => $component['name'],
       '#markup' => isset($data['charge'])
-        ? ($link ? l(t('paid'), 'https://dashboard.stripe.com/' . ($data['test'] ? 'test/' : '') . 'payments/' . $data['charge']) : t('paid'))
-        : ($link ? l(t('subscribed'), 'https://dashboard.stripe.com/' . ($data['test'] ? 'test/' : '') . 'customers/' . $data['customer']) : t('subscribed')),
+        ? ($link ? l($text, 'https://dashboard.stripe.com/' . ($data['test'] ? 'test/' : '') . 'payments/' . $data['charge']) : $text)
+        : ($link ? l($text, 'https://dashboard.stripe.com/' . ($data['test'] ? 'test/' : '') . 'customers/' . $data['customer']) : $text),
       '#weight' => $component['weight'],
       '#theme_wrappers' => $format == 'html' ? array('webform_element') : array('webform_element_text'),
       '#translatable' => array('title'),
@@ -1095,7 +1100,9 @@ function _webform_display_webform_stripe($component, $value, $format = 'html') {
 function _webform_table_webform_stripe($component, $value) {
   if (isset($value[0]) && !empty($value[0]) && substr($value[0], 0, 4) !== 'tok_') {
     $data = unserialize($value[0]);
-    return isset($data['charge']) ? t('paid') : t('subscribed');
+    return isset($data['charge'])
+      ? (!empty($data['amount']) ? webform_stripe_format_amount($data['amount'], $data['currency']) : t('paid'))
+      : t('subscribed');
   }
   return t('no');
 }
