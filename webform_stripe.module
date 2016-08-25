@@ -4,7 +4,7 @@
  * Default button texts.
  */
 define('WEBFORM_STRIPE_CONTINUE_TEXT', t('Continue to payment >'));
-define('WEBFORM_STRIPE_PAY_TEXT', t('Pay with Stripe'));
+define('WEBFORM_STRIPE_PAY_TEXT', t('Pay with Credit Card'));
 define('WEBFORM_STRIPE_CANCEL_TEXT', t('< Return to form'));
 
 /**
