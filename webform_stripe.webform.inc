@@ -1075,22 +1075,24 @@ function _webform_stripe_process_token(&$form, &$form_state) {
  * Implements _webform_display_component().
  */
 function _webform_display_webform_stripe($component, $value, $format = 'html') {
-  if (isset($value[0]) && !empty($value[0]) && substr($value[0], 0, 4) !== 'tok_') {
+  if (isset($value[0]) && !empty($value[0])) {
     $data = unserialize($value[0]);
-    $link = user_access('administer webform stripe') && $format === 'html';
-    $text = isset($data['charge'])
-      ? !empty($data['amount']) ? webform_stripe_format_amount($data['amount'], $data['currency']) : t('paid')
-      : t('subscribed');
-    return array(
-      '#type' => 'markup',
-      '#title' => $component['name'],
-      '#markup' => isset($data['charge'])
-        ? ($link ? l($text, 'https://dashboard.stripe.com/' . ($data['test'] ? 'test/' : '') . 'payments/' . $data['charge']) : $text)
-        : ($link ? l($text, 'https://dashboard.stripe.com/' . ($data['test'] ? 'test/' : '') . 'customers/' . $data['customer']) : $text),
-      '#weight' => $component['weight'],
-      '#theme_wrappers' => $format == 'html' ? array('webform_element') : array('webform_element_text'),
-      '#translatable' => array('title'),
-    );
+    if (is_array($data)) {
+      $link = user_access('administer webform stripe') && $format === 'html';
+      $text = isset($data['charge'])
+        ? !empty($data['amount']) ? webform_stripe_format_amount($data['amount'], $data['currency']) : t('paid')
+        : t('subscribed');
+      return array(
+        '#type' => 'markup',
+        '#title' => $component['name'],
+        '#markup' => isset($data['charge'])
+          ? ($link ? l($text, 'https://dashboard.stripe.com/' . ($data['test'] ? 'test/' : '') . 'payments/' . $data['charge']) : $text)
+          : ($link ? l($text, 'https://dashboard.stripe.com/' . ($data['test'] ? 'test/' : '') . 'customers/' . $data['customer']) : $text),
+        '#weight' => $component['weight'],
+        '#theme_wrappers' => $format == 'html' ? array('webform_element') : array('webform_element_text'),
+        '#translatable' => array('title'),
+      );
+    }
   }
 }
 
@@ -1098,11 +1100,13 @@ function _webform_display_webform_stripe($component, $value, $format = 'html') {
  * Implements _webform_table_component().
  */
 function _webform_table_webform_stripe($component, $value) {
-  if (isset($value[0]) && !empty($value[0]) && substr($value[0], 0, 4) !== 'tok_') {
+  if (isset($value[0]) && !empty($value[0])) {
     $data = unserialize($value[0]);
-    return isset($data['charge'])
-      ? (!empty($data['amount']) ? webform_stripe_format_amount($data['amount'], $data['currency']) : t('paid'))
-      : t('subscribed');
+    if (is_array($data)) {
+      return isset($data['charge'])
+        ? (!empty($data['amount']) ? webform_stripe_format_amount($data['amount'], $data['currency']) : t('paid'))
+        : t('subscribed');
+    }
   }
   return t('no');
 }
@@ -1123,8 +1127,4 @@ function _webform_csv_headers_webform_stripe($component, $export_options) {
  */
 function _webform_csv_data_webform_stripe($component, $export_options, $value) {
   return _webform_table_webform_stripe($component, $value);
-  if (isset($value[0]) && !empty($value[0]) && substr($value[0], 0, 4) !== 'tok_') {
-    return t('yes');
-  }
-  return t('no');
 }
