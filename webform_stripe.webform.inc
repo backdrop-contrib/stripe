@@ -1075,7 +1075,7 @@ function _webform_stripe_process_token(&$form, &$form_state) {
  * Implements _webform_display_component().
  */
 function _webform_display_webform_stripe($component, $value, $format = 'html') {
-  if (isset($value[0]) && !empty($value[0])) {
+  if (isset($value[0]) && !empty($value[0]) && substr($value[0], 0, 4) !== 'tok_') {
     $data = unserialize($value[0]);
     if (is_array($data)) {
       $link = user_access('administer webform stripe') && $format === 'html';
@@ -1100,7 +1100,7 @@ function _webform_display_webform_stripe($component, $value, $format = 'html') {
  * Implements _webform_table_component().
  */
 function _webform_table_webform_stripe($component, $value) {
-  if (isset($value[0]) && !empty($value[0])) {
+  if (isset($value[0]) && !empty($value[0]) && substr($value[0], 0, 4) !== 'tok_') {
     $data = unserialize($value[0]);
     if (is_array($data)) {
       return isset($data['charge'])
