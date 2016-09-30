@@ -31,9 +31,6 @@ function _webform_defaults_webform_stripe() {
       'image_type' => 'default',
       'image_file' => '',
       'image_url' => '',
-      'continue_text' => '',
-      'pay_text' => '',
-      'cancel_text' => '',
     ),
   );
 }
@@ -406,38 +403,13 @@ function _webform_edit_webform_stripe($component) {
     ),
   );
 
-  // Button texts.
-  $form['display']['continue_text'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Continue button label'),
-    '#description' => t('This is used for the button which validates the form and presents the <em>Pay</em> and <em>Cancel</em> buttons. Default: %default', array(
-      '%default' => WEBFORM_STRIPE_CONTINUE_TEXT,
-    )),
-    '#default_value' => $component['extra']['continue_text'],
-    '#parents' => array('extra', 'continue_text'),
-  );
-  $form['display']['pay_text'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Pay button label'),
-    '#description' => t('This is used for the button which opens the Stripe Checkout payment form. Default: <em>%default</em>', array(
-      '%default' => WEBFORM_STRIPE_PAY_TEXT,
-    )),
-    '#default_value' => $component['extra']['pay_text'],
-    '#parents' => array('extra', 'pay_text'),
-  );
-  $form['display']['cancel_text'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Cancel button label'),
-    '#description' => t('This is used for the button which cancels payment and returns to editing the form. Default: <em>%default</em>', array(
-      '%default' => WEBFORM_STRIPE_CANCEL_TEXT,
-    )),
-    '#default_value' => $component['extra']['cancel_text'],
-    '#parents' => array('extra', 'cancel_text'),
-  );
+  // Panel label.
   $form['display']['panel_label'] = array(
     '#type' => 'textfield',
     '#title' => t('Payment button label'),
-    '#description' => t('The label of the payment button in the payment form (e.g. "Pay {{amount}}", "Subscribe", etc.). If you include {{amount}}, it will be replaced by the provided amount. Otherwise, the amount will be appended to the end of your label.'),
+    '#description' => t('The label of the payment button in the Stripe Checkout payment form (e.g. "Pay {{amount}}", "Subscribe", etc.). If you include {{amount}}, it will be replaced by the provided amount. Otherwise, the amount will be appended to the end of your label. You can change the form submit button text on the <a href="!url">form settings page</a>, under Advanced settings.', array(
+      '!url' => url("node/$node->nid/webform/configure"),
+    )),
     '#default_value' => $component['extra']['panel_label'],
     '#parents' => array('extra', 'panel_label'),
   );
@@ -447,105 +419,131 @@ function _webform_edit_webform_stripe($component) {
 }
 
 /**
- * Alters component edit form, needed for ajax handling.
+ * Implements hook_form_FORM_ID_alter() for "webform_component_edit_form".
  */
-function _webform_edit_webform_stripe_alter(&$form, &$form_state) {
-  $component = $form_state['build_info']['args'][1];
+function _webform_stripe_form_webform_component_edit_form_alter(&$form, &$form_state) {
+  // Alter the Stripe payment component edit form, since Webform doesn't pass
+  // the form state to _webform_edit_webform_stripe().
+  if ($form['type']['#value'] === 'webform_stripe') {
+    $component = $form_state['build_info']['args'][1];
 
-  // Add ajax handler to amount component field.
-  $form['amount']['amount_value_component']['#ajax'] = array(
-    'callback' => '_webform_edit_webform_stripe_amount_ajax_callback',
-    'wrapper' => 'webform-stripe-amount',
-  );
+    // Add ajax handler to amount component field.
+    $form['amount']['amount_value_component']['#ajax'] = array(
+      'callback' => '_webform_edit_webform_stripe_amount_ajax_callback',
+      'wrapper' => 'webform-stripe-amount',
+    );
 
-  // Get the selected amount component. If it's a select field, add its
-  // options to the mapping container and display the fieldset. Otherwise,
-  // hide the mapping fieldset by converting it to a container.
-  $form['amount']['amount_value_mapping']['#type'] = 'container';
-  $cid = isset($form_state['values']['extra']['amount_value_component']) ? $form_state['values']['extra']['amount_value_component'] : $component['extra']['amount_value_component'];
-  if (!empty($cid) && isset($form['#node']->webform['components'][$cid])) {
-    $dynamic_component = $form['#node']->webform['components'][$cid];
-    if ($dynamic_component['type'] === 'select') {
-      $form['amount']['amount_value_mapping']['#type'] = 'fieldset';
-      $options = _webform_select_options($dynamic_component);
+    // Get the selected amount component. If it's a select field, add its
+    // options to the mapping container and display the fieldset. Otherwise,
+    // hide the mapping fieldset by converting it to a container.
+    $form['amount']['amount_value_mapping']['#type'] = 'container';
+    $cid = isset($form_state['values']['extra']['amount_value_component']) ? $form_state['values']['extra']['amount_value_component'] : $component['extra']['amount_value_component'];
+    if (!empty($cid) && isset($form['#node']->webform['components'][$cid])) {
+      $dynamic_component = $form['#node']->webform['components'][$cid];
+      if ($dynamic_component['type'] === 'select') {
+        $form['amount']['amount_value_mapping']['#type'] = 'fieldset';
+        $options = _webform_select_options($dynamic_component);
+        foreach ($options as $key => $value) {
+          $form['amount']['amount_value_mapping'][$key] = array(
+            '#type' => 'textfield',
+            '#field_suffix' => check_plain($value),
+            '#size' => 10,
+            '#default_value' => isset($component['extra']['amount_value_mapping'][$key]) ? $component['extra']['amount_value_mapping'][$key] : '',
+          );
+        }
+      }
+    }
+
+    // Add test mode ajax callback.
+    $form['test_mode']['#ajax'] = array(
+      'callback' => '_webform_edit_webform_stripe_amount_ajax_callback',
+      'wrapper' => 'webform-stripe-amount',
+    );
+
+    // Determine if using test mode, and craft a message with an appropriate
+    // link to the Stripe dashboard.
+    $test_mode = isset($form_state['values']['extra']['test_mode']) ? $form_state['values']['extra']['test_mode'] : $component['extra']['test_mode'];
+    $plan_message = t('You can <a href="!url">manage your !option subscription plans here</a>.', array(
+      '!option' => $test_mode ? t('test') : t('live'),
+      '!url' => $test_mode ? 'https://dashboard.stripe.com/test/plans' : 'https://dashboard.stripe.com/plans',
+    ));
+
+    // Set plan options and update description.
+    $form['amount']['amount_plan']['#options'] = _webform_stripe_get_plans($test_mode);
+    $form['amount']['amount_plan']['#description'] .= ' ' . $plan_message;
+
+    // Add ajax handler to plan component field.
+    $form['amount']['amount_plan_component']['#ajax'] = array(
+      'callback' => '_webform_edit_webform_stripe_amount_ajax_callback',
+      'wrapper' => 'webform-stripe-amount',
+    );
+
+    // Get the selected plan component and add its options to the mapping
+    // fieldset. Otherwise, hide the mapping fieldset by converting it to a
+    // container.
+    $form['amount']['amount_plan_mapping']['#type'] = 'container';
+    $cid = isset($form_state['values']['extra']['amount_plan_component']) ? $form_state['values']['extra']['amount_plan_component'] : $component['extra']['amount_plan_component'];
+    if (!empty($cid) && isset($form['#node']->webform['components'][$cid])) {
+      $form['amount']['amount_plan_mapping']['#type'] = 'fieldset';
+      $form['amount']['amount_plan_mapping']['#description'] .= ' ' . $plan_message;
+      $options = _webform_select_options($form['#node']->webform['components'][$cid]);
       foreach ($options as $key => $value) {
-        $form['amount']['amount_value_mapping'][$key] = array(
-          '#type' => 'textfield',
+        $form['amount']['amount_plan_mapping'][$key] = array(
+          '#type' => 'select',
+          '#options' => _webform_stripe_get_plans($test_mode),
+          '#empty_option' => '- ' . t('Select a plan') . ' -',
           '#field_suffix' => check_plain($value),
-          '#size' => 10,
-          '#default_value' => isset($component['extra']['amount_value_mapping'][$key]) ? $component['extra']['amount_value_mapping'][$key] : '',
+          '#default_value' => isset($component['extra']['amount_plan_mapping'][$key]) ? $component['extra']['amount_plan_mapping'][$key] : '',
         );
+      }
+    }
+
+    // Add ajax handler to description component field.
+    $form['description']['description_value_component']['#ajax'] = array(
+      'callback' => '_webform_edit_webform_stripe_description_ajax_callback',
+      'wrapper' => 'webform-stripe-description',
+    );
+
+    // Get the selected description component. If it's a select field, add its
+    // options to the mapping container and display the fieldset. Otherwise,
+    // hide the mapping fieldset by converting it to a container.
+    $form['description']['description_value_mapping']['#type'] = 'container';
+    $cid = isset($form_state['values']['extra']['description_value_component']) ? $form_state['values']['extra']['description_value_component'] : $component['extra']['description_value_component'];
+    if (!empty($cid) && isset($form['#node']->webform['components'][$cid])) {
+      $dynamic_component = $form['#node']->webform['components'][$cid];
+      if ($dynamic_component['type'] === 'select') {
+        $form['description']['description_value_mapping']['#type'] = 'fieldset';
+        $options = _webform_select_options($dynamic_component);
+        foreach ($options as $key => $value) {
+          $form['description']['description_value_mapping'][$key] = array(
+            '#type' => 'textfield',
+            '#field_suffix' => check_plain($value),
+            '#size' => 40,
+            '#default_value' => isset($component['extra']['description_value_mapping'][$key]) ? $component['extra']['description_value_mapping'][$key] : $value,
+          );
+        }
       }
     }
   }
 
-  // Add test mode ajax callback.
-  $form['test_mode']['#ajax'] = array(
-    'callback' => '_webform_edit_webform_stripe_amount_ajax_callback',
-    'wrapper' => 'webform-stripe-amount',
-  );
-
-  // Determine if using test mode, and craft a message with an appropriate
-  // link to the Stripe dashboard.
-  $test_mode = isset($form_state['values']['extra']['test_mode']) ? $form_state['values']['extra']['test_mode'] : $component['extra']['test_mode'];
-  $plan_message = t('You can <a href="!url">manage your !option subscription plans here</a>.', array(
-    '!option' => $test_mode ? t('test') : t('live'),
-    '!url' => $test_mode ? 'https://dashboard.stripe.com/test/plans' : 'https://dashboard.stripe.com/plans',
-  ));
-
-  // Set plan options and update description.
-  $form['amount']['amount_plan']['#options'] = _webform_stripe_get_plans($test_mode);
-  $form['amount']['amount_plan']['#description'] .= ' ' . $plan_message;
-
-  // Add ajax handler to plan component field.
-  $form['amount']['amount_plan_component']['#ajax'] = array(
-    'callback' => '_webform_edit_webform_stripe_amount_ajax_callback',
-    'wrapper' => 'webform-stripe-amount',
-  );
-
-  // Get the selected plan component and add its options to the mapping
-  // fieldset. Otherwise, hide the mapping fieldset by converting it to a
-  // container.
-  $form['amount']['amount_plan_mapping']['#type'] = 'container';
-  $cid = isset($form_state['values']['extra']['amount_plan_component']) ? $form_state['values']['extra']['amount_plan_component'] : $component['extra']['amount_plan_component'];
-  if (!empty($cid) && isset($form['#node']->webform['components'][$cid])) {
-    $form['amount']['amount_plan_mapping']['#type'] = 'fieldset';
-    $form['amount']['amount_plan_mapping']['#description'] .= ' ' . $plan_message;
-    $options = _webform_select_options($form['#node']->webform['components'][$cid]);
-    foreach ($options as $key => $value) {
-      $form['amount']['amount_plan_mapping'][$key] = array(
-        '#type' => 'select',
-        '#options' => _webform_stripe_get_plans($test_mode),
-        '#empty_option' => '- ' . t('Select a plan') . ' -',
-        '#field_suffix' => check_plain($value),
-        '#default_value' => isset($component['extra']['amount_plan_mapping'][$key]) ? $component['extra']['amount_plan_mapping'][$key] : '',
-      );
-    }
-  }
-
-  // Add ajax handler to description component field.
-  $form['description']['description_value_component']['#ajax'] = array(
-    'callback' => '_webform_edit_webform_stripe_description_ajax_callback',
-    'wrapper' => 'webform-stripe-description',
-  );
-
-  // Get the selected description component. If it's a select field, add its
-  // options to the mapping container and display the fieldset. Otherwise,
-  // hide the mapping fieldset by converting it to a container.
-  $form['description']['description_value_mapping']['#type'] = 'container';
-  $cid = isset($form_state['values']['extra']['description_value_component']) ? $form_state['values']['extra']['description_value_component'] : $component['extra']['description_value_component'];
-  if (!empty($cid) && isset($form['#node']->webform['components'][$cid])) {
-    $dynamic_component = $form['#node']->webform['components'][$cid];
-    if ($dynamic_component['type'] === 'select') {
-      $form['description']['description_value_mapping']['#type'] = 'fieldset';
-      $options = _webform_select_options($dynamic_component);
-      foreach ($options as $key => $value) {
-        $form['description']['description_value_mapping'][$key] = array(
-          '#type' => 'textfield',
-          '#field_suffix' => check_plain($value),
-          '#size' => 40,
-          '#default_value' => isset($component['extra']['description_value_mapping'][$key]) ? $component['extra']['description_value_mapping'][$key] : $value,
-        );
+  // When editing a Select component that's being used as the dynamic amount or
+  // description component, show a reminder message.
+  if ($form['type']['#value'] === 'select' && !empty($form_state['build_info']['args'][1]['cid'])) {
+    foreach ($form['#node']->webform['components'] as $cid => $component) {
+      if ($component['type'] === 'webform_stripe') {
+        foreach (array('amount', 'description') as $setting) {
+          foreach (array('value', 'plan') as $type) {
+            if (
+              $component['extra']["{$setting}_type"] === "{$type}_component"
+              && isset($component['extra']["{$setting}_{$type}_component"])
+              && $component['extra']["{$setting}_{$type}_component"] === $form_state['build_info']['args'][1]['cid']
+            ) {
+              drupal_set_message(t('The Stripe payment component is using this field to populate the %setting. If you add options to this field, be sure to also update the Stripe payment options.', array(
+                '%setting' => $setting,
+              )), 'warning');
+            }
+          }
+        }
       }
     }
   }
@@ -705,101 +703,60 @@ function _webform_render_webform_stripe($component, $value = NULL, $filter = TRU
 }
 
 /**
- * Alters a webform.
+ * Implements hook_form_FORM_ID_alter() for "webform_configure_form".
+ */
+function _webform_stripe_form_webform_configure_form_alter(&$form, &$form_state) {
+  // If form has Stripe payment component, change the Submit button help text.
+  foreach ($form['#node']->webform['components'] as $component) {
+    if ($component['type'] === 'webform_stripe') {
+      $form['advanced']['submit_text']['#description'] = t('By default the submit button on this form will have the label <em>!label</em>, because this form has a Stripe payment component. Enter a new title here to override the default.', array(
+        '!label' => WEBFORM_STRIPE_PAY_TEXT,
+      ));
+    }
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for "webform_client_form".
  */
 function _webform_stripe_form_webform_client_form_alter(&$form, &$form_state) {
   // Look for a Stripe payment component on a form that has a Submit button.
   foreach ($form['#node']->webform['components'] as $cid => $component) {
     if ($component['type'] === 'webform_stripe' && isset($form['actions']['submit'])) {
-      // Store component for easy access in our submit callback.
-      $form['#webform_stripe'] = $component;
+      // New submission, or editing submission without a payment.
+      if (empty($form['#submission']) || empty($form['#submission']->data[$cid][0])) {
+        // Store component for easy access in our submit callback.
+        $form['#webform_stripe'] = $component;
 
-      // New submission.
-      if (empty($form['#submission'])) {
-        // Wrap form with ID so we can replace it via ajax.
-        $form['#webform_stripe_html_id'] = drupal_html_id('webform-stripe-form');
-        $form['#prefix'] = '<div id="' . $form['#webform_stripe_html_id'] . '">';
-        $form['#suffix'] = '</div>';
+        // Add class to form to help Drupal.ajax.prototype.beforeSubmit().
+        $form['#attributes']['class'][] = 'webform-stripe-form';
 
-        // Hide Submit button and add our Continue button.
-        $continue_text = !empty($component['extra']['continue_text']) ? $component['extra']['continue_text'] : WEBFORM_STRIPE_CONTINUE_TEXT;
-        if (!isset($form_state['triggering_element']) || !($form_state['triggering_element']['#name'] === 'op' && $form_state['triggering_element']['#value'] === $continue_text)) {
-          $form['actions']['submit']['#access'] = FALSE;
-          $form['actions']['webform_stripe_continue'] = array(
-            '#type' => 'button',
-            '#value' => $continue_text,
+        // Add submit callback.
+        $form['#submit'][] = '_webform_stripe_process_token';
+
+        // Creating; set default submit button text and attach ajax.
+        if (empty($form['#submission'])) {
+          if (empty($form['#node']->webform['submit_text'])) {
+            $form['actions']['submit']['#value'] = WEBFORM_STRIPE_PAY_TEXT;
+          }
+          $form['actions']['submit']['#ajax'] = array(
+            'path' => "webform-stripe-ajax/$cid",
+            'wrapper' => $form['#id'],
+          );
+        }
+
+        // Editing; add ajax button to save and pay.
+        else {
+          $form['actions']['webform_stripe'] = array(
+            '#type' => 'submit',
+            '#value' => t('Save and Pay'),
             '#weight' => 15,
             '#ajax' => array(
-              'callback' => '_webform_stripe_form_webform_client_form_ajax_callback',
-              'wrapper' => $form['#webform_stripe_html_id'],
+              'path' => "webform-stripe-ajax/$cid",
+              'wrapper' => $form['#id'],
             ),
           );
         }
-
-        // Continue button was clicked.
-        else {
-          // Hide webform fields and submit button in a way that keeps them in
-          // the HTML so they can be submitted after successful payment.
-          $form['submitted']['#type'] = 'container';
-          $form['submitted']['#attributes']['style'] = 'display: none';
-          $form['actions']['submit']['#attributes']['style'] = 'display: none';
-
-          // If Previous button is available, hide it.
-          if (isset($form['actions']['previous'])) {
-            $form['actions']['previous']['#access'] = FALSE;
-          }
-
-          // Add our Pay button, which will trigger Stripe Checkout.
-          $form['actions']['webform_stripe_pay'] = array(
-            '#type' => 'button',
-            '#value' => !empty($component['extra']['pay_text']) ? $component['extra']['pay_text'] : WEBFORM_STRIPE_PAY_TEXT,
-            '#attributes' => array('class' => array('webform-stripe-pay')),
-            '#attached' => array(
-              'js' => array(
-                array(
-                  'data' => array('webform_stripe' => _webform_stripe_process_checkout_settings($component, $form_state['values']['submitted'])),
-                  'type' => 'setting',
-                ),
-              ),
-            ),
-          );
-
-          // Add our Cancel button, which will return to editing the form.
-          $form['actions']['webform_stripe_cancel'] = array(
-            '#type' => 'button',
-            '#value' => !empty($component['extra']['cancel_text']) ? $component['extra']['cancel_text'] : WEBFORM_STRIPE_CANCEL_TEXT,
-            '#attributes' => array('class' => array('webform-stripe-cancel')),
-            '#ajax' => array(
-              'callback' => '_webform_stripe_form_webform_client_form_ajax_callback',
-              'wrapper' => $form['#webform_stripe_html_id'],
-            ),
-          );
-        }
-
-        // Add submit callback.
-        $form['#submit'][] = '_webform_stripe_process_token';
-      }
-
-      // Editing submission not already having a payment.
-      else if (empty($form['#submission']->data[$cid][0])) {
-        // Add our Pay button, which will trigger Stripe Checkout.
-        $form['actions']['webform_stripe_pay'] = array(
-          '#type' => 'button',
-          '#value' => !empty($component['extra']['pay_text']) ? $component['extra']['pay_text'] : WEBFORM_STRIPE_PAY_TEXT,
-          '#attributes' => array('class' => array('webform-stripe-pay')),
-          '#weight' => 15,
-          '#attached' => array(
-            'js' => array(
-              array(
-                'data' => array('webform_stripe' => _webform_stripe_process_checkout_settings($component, $form['#submission']->data)),
-                'type' => 'setting',
-              ),
-            ),
-          ),
-        );
-
-        // Add submit callback.
-        $form['#submit'][] = '_webform_stripe_process_token';
       }
 
       // Only process one Stripe Payment component per form.
@@ -811,19 +768,29 @@ function _webform_stripe_form_webform_client_form_alter(&$form, &$form_state) {
 /**
  * Webform ajax callback.
  */
-function _webform_stripe_form_webform_client_form_ajax_callback($form, $form_state) {
-  // Instead of simply returning $form, we also want to scroll to the top of
-  // the form, so the ajax commands have to be built manually.
-  // See ajax_prepare_response().
+function _webform_stripe_form_webform_client_form_ajax_callback($cid) {
+  // Get the form, build it, and validate it. See ajax_form_callback() and
+  // drupal_process_form().
+  list($form, $form_state, $form_id, $form_build_id, $commands) = ajax_get_form();
+  $form_state['values'] = array();
+  $form = form_builder($form['#form_id'], $form, $form_state);
+  drupal_validate_form($form['#form_id'], $form, $form_state);
+
+  // If form had any validation errors, return it and display the messages.
+  if (form_get_errors()) {
+    return $form;
+  }
+
+  // Stripe Payment component.
+  $component = $form['#node']->webform['components'][$cid];
+
+  // Open Stripe Checkout.
   return array(
     '#type' => 'ajax',
     '#commands' => array(
-      ajax_command_insert(NULL, drupal_render($form)),
-      ajax_command_prepend(NULL, theme('status_messages')),
       array(
-        'command' => 'webformStripeScroll',
-        'selector' => '#' . $form['#webform_stripe_html_id'],
-        'duration' => 500,
+        'command' => 'webformStripeCheckout',
+        'params' => _webform_stripe_process_checkout_settings($component, $form_state['values']['submitted']),
       ),
     ),
   );

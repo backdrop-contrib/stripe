@@ -249,3 +249,33 @@ function webform_stripe_update_7005() {
     }
   }
 }
+
+/**
+ * Updates "submit text" option for webforms with a Stripe Payment component.
+ */
+function webform_stripe_update_7006() {
+  // Get Stripe Payment components and the corresponding Webform's submit text.
+  $components = db_query("SELECT c.*, w.submit_text
+    FROM {webform_component} c
+    INNER JOIN {webform} w ON w.nid = c.nid
+    WHERE c.type = 'webform_stripe'")->fetchAll();
+  foreach ($components as $component) {
+    $extra = unserialize($component->extra);
+
+    // If old Pay Text setting was set, update Webform submit text.
+    if (!empty($extra['pay_text'])) {
+      db_query("UPDATE {webform} SET submit_text = :submit_text WHERE nid = :nid", array(
+        ':submit_text' => $extra['pay_text'],
+        ':nid' => $component->nid,
+      ));
+    }
+
+    // Remove old settings.
+    unset($extra['continue_text'], $extra['pay_text'], $extra['cancel_text']);
+    db_query("UPDATE {webform_component} SET extra = :extra WHERE nid = :nid AND cid = :cid", array(
+      ':extra' => serialize($extra),
+      ':nid' => $component->nid,
+      ':cid' => $component->cid,
+    ));
+  }
+}

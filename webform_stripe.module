@@ -3,9 +3,7 @@
 /**
  * Default button texts.
  */
-define('WEBFORM_STRIPE_CONTINUE_TEXT', t('Continue to payment >'));
 define('WEBFORM_STRIPE_PAY_TEXT', t('Pay with Credit Card'));
-define('WEBFORM_STRIPE_CANCEL_TEXT', t('< Return to form'));
 
 /**
  * Implements hook_permission().
@@ -30,6 +28,16 @@ function webform_stripe_menu() {
     'page callback' => 'drupal_get_form',
     'page arguments' => array('webform_stripe_settings_form'),
     'file' => 'webform_stripe.admin.inc',
+  );
+  $items['webform-stripe-ajax/%'] = array(
+    'type' => MENU_CALLBACK,
+    'title' => 'Ajax callback',
+    'access callback' => TRUE,
+    'page callback' => '_webform_stripe_form_webform_client_form_ajax_callback',
+    'page arguments' => array(1),
+    'delivery callback' => 'ajax_deliver',
+    'theme callback' => 'ajax_base_page_theme',
+    'file' => 'webform_stripe.webform.inc',
   );
   return $items;
 }
@@ -142,34 +150,16 @@ function webform_stripe_checkout_settings() {
  * Implements hook_form_FORM_ID_alter() for "webform_component_edit_form".
  */
 function webform_stripe_form_webform_component_edit_form_alter(&$form, &$form_state) {
-  // Alter the Stripe payment component edit form, since Webform doesn't pass
-  // the form state to _webform_edit_webform_stripe().
-  if ($form['type']['#value'] === 'webform_stripe') {
-    form_load_include($form_state, 'inc', 'webform_stripe', 'webform_stripe.webform');
-    _webform_edit_webform_stripe_alter($form, $form_state);
-  }
+  form_load_include($form_state, 'inc', 'webform_stripe', 'webform_stripe.webform');
+  _webform_stripe_form_webform_component_edit_form_alter($form, $form_state);
+}
 
-  // When editing a Select component that's being used as the dynamic amount or
-  // description component, show a reminder message.
-  if ($form['type']['#value'] === 'select' && !empty($form_state['build_info']['args'][1]['cid'])) {
-    foreach ($form['#node']->webform['components'] as $cid => $component) {
-      if ($component['type'] === 'webform_stripe') {
-        foreach (array('amount', 'description') as $setting) {
-          foreach (array('value', 'plan') as $type) {
-            if (
-              $component['extra']["{$setting}_type"] === "{$type}_component"
-              && isset($component['extra']["{$setting}_{$type}_component"])
-              && $component['extra']["{$setting}_{$type}_component"] === $form_state['build_info']['args'][1]['cid']
-            ) {
-              drupal_set_message(t('The Stripe payment component is using this field to populate the %setting. If you add options to this field, be sure to also update the Stripe payment options.', array(
-                '%setting' => $setting,
-              )), 'warning');
-            }
-          }
-        }
-      }
-    }
-  }
+/**
+ * Implements hook_form_FORM_ID_alter() for "webform_configure_form".
+ */
+function webform_stripe_form_webform_configure_form_alter(&$form, &$form_state) {
+  form_load_include($form_state, 'inc', 'webform_stripe', 'webform_stripe.webform');
+  _webform_stripe_form_webform_configure_form_alter($form, $form_state);
 }
 
 /**
@@ -178,20 +168,6 @@ function webform_stripe_form_webform_component_edit_form_alter(&$form, &$form_st
 function webform_stripe_form_webform_client_form_alter(&$form, &$form_state, $form_id) {
   form_load_include($form_state, 'inc', 'webform_stripe', 'webform_stripe.webform');
   _webform_stripe_form_webform_client_form_alter($form, $form_state);
-}
-
-/**
- * Implements hook_form_FORM_ID_alter() for "webform_configure_form".
- */
-function webform_stripe_form_webform_configure_form_alter(&$form, &$form_state) {
-  // If form has Stripe payment component, disable the Submit button label
-  // field and let the user know why.
-  foreach ($form['#node']->webform['components'] as $component) {
-    if ($component['type'] === 'webform_stripe') {
-      $form['advanced']['submit_text']['#disabled'] = TRUE;
-      $form['advanced']['submit_text']['#description'] = t('This form has a Stripe payment component, which changes the way the Submit button works, so this field has no effect and has been disabled.');
-    }
-  }
 }
 
 /**
