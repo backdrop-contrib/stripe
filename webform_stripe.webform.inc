@@ -948,6 +948,12 @@ function _webform_stripe_process_checkout_settings($component, $data) {
       continue;
     }
 
+    // Convert setting to camel case.
+    if (strpos($key, '-') !== FALSE) {
+      unset($settings[$key]);
+      $key = lcfirst(str_replace(' ', '', ucwords(str_replace('-', ' ', $key))));
+    }
+
     $settings[$key] = $setting;
   }
 
