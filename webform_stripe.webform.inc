@@ -408,7 +408,9 @@ function _webform_edit_webform_stripe($component) {
     '#type' => 'textfield',
     '#title' => t('Payment button label'),
     '#description' => t('The label of the payment button in the Stripe Checkout payment form (e.g. "Pay {{amount}}", "Subscribe", etc.). If you include {{amount}}, it will be replaced by the provided amount. Otherwise, the amount will be appended to the end of your label. You can change the form submit button text on the <a href="!url">form settings page</a>, under Advanced settings.', array(
-      '!url' => url("node/$node->nid/webform/configure"),
+      '!url' => url("node/$node->nid/webform/configure", array(
+        'fragment' => 'edit-submit-text',
+      )),
     )),
     '#default_value' => $component['extra']['panel_label'],
     '#parents' => array('extra', 'panel_label'),
