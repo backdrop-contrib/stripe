@@ -210,22 +210,22 @@ function webform_stripe_update_7004() {
  * Retrieves amount values from Stripe for existing charges.
  */
 function webform_stripe_update_7005() {
-  // Include Stripe library.
-  $library = webform_stripe_load_library();
-  if ($library['loaded']) {
-    return;
-  }
-
-  // Ensure API keys.
-  if (!variable_get('webform_stripe_test_secret_key', '') || !variable_get('webform_stripe_live_secret_key', '')) {
-    return;
-  }
-
-  // Find all Webform Stripe submitted data.
+  // Find all Stripe Payment submitted data.
   $submitted_data = db_query("SELECT d.*
     FROM {webform_component} c
     INNER JOIN {webform_submitted_data} d ON d.nid = c.nid AND d.cid = c.cid
     WHERE c.type = 'webform_stripe'")->fetchAll();
+
+  // If a Stripe Payment was found, check for dependencies.
+  if (!empty($submitted_data)) {
+    $library = webform_stripe_load_library();
+    if ($library['loaded']) {
+      throw new DrupalUpdateException('The Stripe PHP API library is missing.');
+    }
+    if (!variable_get('webform_stripe_test_secret_key', '') || !variable_get('webform_stripe_live_secret_key', '')) {
+      throw new DrupalUpdateException('You need to configure your Stripe API secret keys.');
+    }
+  }
 
   // For each submission, if it was a charge (not a subscription) and the
   // amount is not set, then retrieve the amount and currency for that charge
