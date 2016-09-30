@@ -937,9 +937,9 @@ function _webform_stripe_process_checkout_settings($component, $data) {
 
   // Prepare for Javascript.
   foreach ($settings as $key => $setting) {
-    // Convert boolean values into strings.
+    // Ensure boolean values have correct type.
     if (in_array($key, array('billing-address', 'zip-code', 'shipping-address', 'allow-remember-me', 'bitcoin', 'alipay', 'alipay-reusable'))) {
-      $setting = $setting ? 'true' : 'false';
+      $setting = (bool) $setting;
     }
 
     // Skip if option is empty.
