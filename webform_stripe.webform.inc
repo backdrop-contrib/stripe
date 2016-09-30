@@ -730,6 +730,11 @@ function _webform_stripe_form_webform_client_form_alter(&$form, &$form_state) {
         // Store component for easy access in our submit callback.
         $form['#webform_stripe'] = $component;
 
+        // Wrap form.
+        $form['#webform_stripe_html_id'] = drupal_html_id('webform-stripe-form');
+        $form['#prefix'] = '<div id="' . $form['#webform_stripe_html_id'] . '">';
+        $form['#suffix'] = '</div>';
+
         // Add class to form to help Drupal.ajax.prototype.beforeSubmit().
         $form['#attributes']['class'][] = 'webform-stripe-form';
 
@@ -743,7 +748,7 @@ function _webform_stripe_form_webform_client_form_alter(&$form, &$form_state) {
           }
           $form['actions']['submit']['#ajax'] = array(
             'path' => "webform-stripe-ajax/$cid",
-            'wrapper' => $form['#id'],
+            'wrapper' => $form['#webform_stripe_html_id'],
           );
         }
 
@@ -755,7 +760,7 @@ function _webform_stripe_form_webform_client_form_alter(&$form, &$form_state) {
             '#weight' => 15,
             '#ajax' => array(
               'path' => "webform-stripe-ajax/$cid",
-              'wrapper' => $form['#id'],
+              'wrapper' => $form['#webform_stripe_html_id'],
             ),
           );
         }
@@ -780,7 +785,15 @@ function _webform_stripe_form_webform_client_form_ajax_callback($cid) {
 
   // If form had any validation errors, return it and display the messages.
   if (form_get_errors()) {
-    return $form;
+    $commands = ajax_prepare_response($form);
+    $commands[] = array(
+      'command' => 'webformStripeScroll',
+      'selector' => '#' . $form['#webform_stripe_html_id'],
+    );
+    return array(
+      '#type' => 'ajax',
+      '#commands' => $commands,
+    );
   }
 
   // Stripe Payment component.
