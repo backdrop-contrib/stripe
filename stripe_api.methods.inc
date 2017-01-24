@@ -24,6 +24,10 @@
  */
 function stripe_api_call($obj, $method = NULL, $params = NULL) {
   libraries_load('stripe');
+
+  $curl = new \Stripe\HttpClient\CurlClient(array(CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2));
+  \Stripe\ApiRequestor::setHttpClient($curl);
+
   $obj = ucfirst($obj);
   $class = 'Stripe\\' . $obj;
   if ($method) {
