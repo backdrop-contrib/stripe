@@ -112,6 +112,7 @@ complete text.
 ##Current Maintainers
 
 - [Laryn Kragt Bakker](https://github.com/laryn) - [CEDC.org](https://cedc.org)
+- [Jen Lampton](https://github.com/jenlampton)
 
 ##Credits
 
