@@ -11,6 +11,17 @@ define('STRIPE_API_CHECKOUT_JS', 'https://checkout.stripe.com/checkout.js');
 module_load_include('inc', 'stripe', 'stripe.methods');
 
 /**
+ * Implements hook_config_info().
+ */
+function stripe_config_info() {
+  $prefixes['stripe.settings'] = array(
+    'label' => t('Stripe API settings'),
+    'group' => t('Configuration'),
+  );
+  return $prefixes;
+}
+
+/**
  * Implements hook_menu().
  */
 function stripe_menu() {
@@ -28,11 +39,13 @@ function stripe_menu() {
     'type' => MENU_DEFAULT_LOCAL_TASK,
     'weight' => -10,
   );
+
   $items['stripe/webhook'] = array(
     'type' => MENU_CALLBACK,
     'access callback' => TRUE,
     'page callback' => 'stripe_incoming_webhook',
   );
+
   return $items;
 }
 
@@ -44,7 +57,7 @@ function stripe_incoming_webhook() {
   $event_json = json_decode($input);
   $event = NULL;
   // Validate the webhook if we are in LIVE mode.
-  if (config_get('stripe.settings', 'stripe_api_mode') === 'live' && ($event_json->livemode == TRUE || $event_json->id !== 'evt_00000000000000')) {
+  if (config_get('stripe.settings', 'mode') === 'live' && ($event_json->livemode == TRUE || $event_json->id !== 'evt_00000000000000')) {
     $event = stripe_api_call('event', 'retrieve', $event_json->id);
     if (!$event) {
       watchdog('stripe', 'Invalid webhook event: @data', array(
@@ -67,15 +80,23 @@ function stripe_incoming_webhook() {
 
 /**
  * Implements hook_stripe_webhook().
- *
- * Log incoming webhooks.
  */
 function stripe_stripe_webhook($type, $data, Stripe\Event $event = NULL) {
-  if (config_get('stripe.settings','stripe_api_log_webhooks')) {
+  if (config_get('stripe.settings', 'log_webhooks')) {
     watchdog('stripe', 'Processed webhook: @name<br /><br />Data: @data', array(
       '@name' => $type,
       '@data' => json_encode($data),
     ), WATCHDOG_INFO);
+  }
+}
+
+/**
+ * Implements hook_system_info_alter().
+ */
+function stripe_system_info_alter(&$info, $file, $type) {
+  // Mark modules that have been integrated into stripe as merged (?)
+  if (strstr($info['name'], 'Stripe API')) {
+    $info['merged_into_core'] = TRUE;
   }
 }
 
@@ -90,9 +111,9 @@ function stripe_stripe_webhook($type, $data, Stripe\Event $event = NULL) {
  */
 function stripe_get_secret_key($mode = '') {
   if (!$mode) {
-    $mode = config_get('stripe.settings', 'stripe_api_mode');
+    $mode = config_get('stripe.settings', 'mode');
   }
-  return config_get('stripe_secret.settings', 'stripe_api_' . $mode . '_secret_key');
+  return config_get('stripe_secret.settings', $mode . '_secret_key');
 }
 
 /**
@@ -107,7 +128,7 @@ function stripe_get_secret_key($mode = '') {
 function stripe_get_public_key($mode = '') {
   $config = config('stripe.settings');
   if (!$mode) {
-    $mode = $config->get('stripe_api_mode');
+    $mode = $config->get('mode');
   }
-  return $config->get('stripe_api_' . $mode . '_public_key');
+  return $config->get($mode . '_public_key');
 }

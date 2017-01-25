@@ -10,37 +10,37 @@
 function stripe_admin_settings_form($form, $form_state) {
   $config = config('stripe.settings');
   $secretconfig = config('stripe_secret.settings');
-  $form['stripe_api_mode'] = array(
+  $form['mode'] = array(
     '#type' => 'radios',
     '#title' => t('Transaction mode'),
     '#options' => array(
       'test' => t('Test'),
       'live' => t('Live'),
     ),
-    '#default_value' => $config->get('stripe_api_mode'),
+    '#default_value' => $config->get('mode'),
   );
-  $form['stripe_api_test_secret_key'] = array(
+  $form['test_secret_key'] = array(
     '#type' => 'textfield',
     '#title' => t('Test Secret Key'),
-    '#default_value' => $secretconfig->get('stripe_api_test_secret_key'),
+    '#default_value' => $secretconfig->get('test_secret_key'),
   );
-  $form['stripe_api_test_public_key'] = array(
+  $form['test_public_key'] = array(
     '#type' => 'textfield',
     '#title' => t('Test Publishable Key'),
-    '#default_value' => $config->get('stripe_api_test_public_key'),
+    '#default_value' => $config->get('test_public_key'),
   );
-  $form['stripe_api_live_secret_key'] = array(
+  $form['live_secret_key'] = array(
     '#type' => 'textfield',
     '#title' => t('Live Secret Key'),
-    '#default_value' => $secretconfig->get('stripe_api_live_secret_key'),
+    '#default_value' => $secretconfig->get('live_secret_key'),
   );
-  $form['stripe_api_live_public_key'] = array(
+  $form['live_public_key'] = array(
     '#type' => 'textfield',
     '#title' => t('Live Publishable Key'),
-    '#default_value' => $config->get('stripe_api_live_public_key'),
+    '#default_value' => $config->get('live_public_key'),
   );
 
-  $form['stripe_api_webhook_url'] = array(
+  $form['webhook_url'] = array(
     '#type' => 'textfield',
     '#disabled' => TRUE,
     '#title' => t('Webhook URL'),
@@ -50,13 +50,13 @@ function stripe_admin_settings_form($form, $form_state) {
     )),
   );
 
-  $form['stripe_api_log_webhooks'] = array(
+  $form['log_webhooks'] = array(
     '#type' => 'checkbox',
     '#title' => t('Log incoming webhooks'),
-    '#default_value' => $config->get('stripe_api_log_webhooks'),
+    '#default_value' => $config->get('log_webhooks'),
   );
 
-  $form['stripe_api_link'] = array(
+  $form['link'] = array(
     '#markup' => t('Stripe resources: !dashboard | !api_keys | !docs<br /><br />', array(
       '!dashboard' => l(t('Dashboard'), 'https://dashboard.stripe.com', array('attributes' => array('target' => '_blank'))),
       '!api_keys' => l(t('API Keys'), 'https://dashboard.stripe.com/account/apikeys', array('attributes' => array('target' => '_blank'))),
@@ -94,12 +94,12 @@ function stripe_admin_settings_form_submit($form, &$form_state) {
   $secretconfig = config('stripe_secret.settings');
   $values = $form_state['values'];
 
-  $config->set('stripe_api_mode' , $values['stripe_api_mode']);
-  $config->set('stripe_api_test_public_key' , $values['stripe_api_test_public_key']);
-  $config->set('stripe_api_live_public_key' , $values['stripe_api_live_public_key']);
-  $secretconfig->set('stripe_api_test_secret_key' , $values['stripe_api_test_secret_key']);
-  $secretconfig->set('stripe_api_live_secret_key' , $values['stripe_api_live_secret_key']);
-  $config->set('stripe_api_log_webhooks' , $values['stripe_api_log_webhooks']);
+  $config->set('mode' , $values['mode']);
+  $config->set('test_public_key' , $values['test_public_key']);
+  $config->set('live_public_key' , $values['live_public_key']);
+  $secretconfig->set('test_secret_key' , $values['test_secret_key']);
+  $secretconfig->set('live_secret_key' , $values['live_secret_key']);
+  $config->set('log_webhooks' , $values['log_webhooks']);
   $config->save();
   $secretconfig->save();
 

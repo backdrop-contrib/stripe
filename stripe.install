@@ -3,3 +3,54 @@
  * @file
  * Includes install, uninstall, update, and requirements functionality.
  */
+
+/**
+ * Upgrade path from Stripe API module to Stripe module.
+ */
+function stripe_install() {
+  // Create new config files.
+  $config = config('stripe.settings');
+  $secretconfig = config('stripe_secret.settings');
+
+  // Pull values from variables to config.
+  include_once('core/includes/update.inc');
+  $config->set('mode', update_variable_get('stripe_api_mode', 'test'));
+  $config->set('log_webhooks' , update_variable_get('stripe_api_log_webhooks', FALSE));
+  $config->set('test_public_key' , update_variable_get('stripe_api_test_public_key', ''));
+  $config->set('live_public_key' , update_variable_get('stripe_api_live_public_key', ''));
+  $secretconfig->set('test_secret_key' , update_variable_get('stripe_api_test_secret_key', ''));
+  $secretconfig->set('live_secret_key' , update_variable_get('stripe_api_live_secret_key', ''));
+
+  // Delete varaibles.
+  update_variable_del('stripe_api_mode');
+  update_variable_del('stripe_api_log_webhooks');
+  update_variable_del('stripe_api_test_public_key');
+  update_variable_del('stripe_api_live_public_key');
+  update_variable_del('stripe_api_test_secret_key');
+  update_variable_del('stripe_api_live_secret_key');
+
+  // Update from Stripe API to Stripe (overwrite variables if necessary).
+  $api_config = config('stripe_api.settings');
+  if (!$api_config->isNew()) {
+    $config->set('mode' , $api_config->get('stripe_api_mode', 'test'));
+    $config->set('log_webhooks' , $api_config->get('stripe_api_log_webhooks', FALSE));
+    $config->set('test_public_key' , $api_config->get('stripe_api_test_public_key', ''));
+    $config->set('live_public_key' , $api_config->get('stripe_api_live_public_key', ''));
+  }
+  $api_secretconfig = config('stripe_api_secret.settings');
+  if (!$api_config->isNew()) {
+    $secretconfig->set('test_secret_key' , $api_secretconfig->get('stripe_api_test_secret_key', ''));
+    $secretconfig->set('live_secret_key' , $api_secretconfig->get('stripe_api_live_secret_key', ''));
+  }
+
+  // Save new config.
+  $config->save();
+  $secretconfig->save();
+
+  // Delete old config.
+  $api_config->delete();
+  $api_secretconfig->delete();
+
+  // Uninstall the stripe_api module.
+  db_query("DELETE from {system} WHERE type = 'module' AND name = 'stripe_api'");
+}
