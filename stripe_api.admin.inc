@@ -81,7 +81,7 @@ function stripe_api_admin_settings_form($form, $form_state) {
     '#type' => 'submit',
     '#value' => t('Save configuration'),
   );
-  
+
   return $form;
 }
 
@@ -92,7 +92,7 @@ function stripe_api_admin_settings_form_submit($form, &$form_state) {
   $config = config('stripe_api.settings');
   $secretconfig = config('stripe_api_secret.settings');
   $values = $form_state['values'];
-  
+
   $config->set('stripe_api_mode' , $values['stripe_api_mode']);
   $config->set('stripe_api_test_public_key' , $values['stripe_api_test_public_key']);
   $config->set('stripe_api_live_public_key' , $values['stripe_api_live_public_key']);
