@@ -7,15 +7,17 @@
 /**
  * Stripe API admin settings form.
  */
-function stripe_api_admin_settings_form($form, $form_state) {
-  $config = config('stripe_api.settings');
-  $secretconfig = config('stripe_api_secret.settings');
-  $form['stripe_api_link'] = array(
-    '#markup' => t('!dashboard | !api_keys | !docs<br /><br />', array(
-      '!dashboard' => l(t('Dashboard'), 'https://dashboard.stripe.com', array('attributes' => array('target' => '_blank'))),
-      '!api_keys' => l(t('API Keys'), 'https://dashboard.stripe.com/account/apikeys', array('attributes' => array('target' => '_blank'))),
-      '!docs' => l(t('Docs'), 'https://stripe.com/docs/api', array('attributes' => array('target' => '_blank'))),
-    )),
+function stripe_admin_settings_form($form, $form_state) {
+  $config = config('stripe.settings');
+  $secretconfig = config('stripe_secret.settings');
+  $form['stripe_api_mode'] = array(
+    '#type' => 'radios',
+    '#title' => t('Transaction mode'),
+    '#options' => array(
+      'test' => t('Test'),
+      'live' => t('Live'),
+    ),
+    '#default_value' => $config->get('stripe_api_mode'),
   );
   $form['stripe_api_test_secret_key'] = array(
     '#type' => 'textfield',
@@ -37,15 +39,6 @@ function stripe_api_admin_settings_form($form, $form_state) {
     '#title' => t('Live Publishable Key'),
     '#default_value' => $config->get('stripe_api_live_public_key'),
   );
-  $form['stripe_api_mode'] = array(
-    '#type' => 'radios',
-    '#title' => t('Mode'),
-    '#options' => array(
-      'test' => t('Test'),
-      'live' => t('Live'),
-    ),
-    '#default_value' => $config->get('stripe_api_mode'),
-  );
 
   $form['stripe_api_webhook_url'] = array(
     '#type' => 'textfield',
@@ -63,12 +56,20 @@ function stripe_api_admin_settings_form($form, $form_state) {
     '#default_value' => $config->get('stripe_api_log_webhooks'),
   );
 
-  if (_stripe_api_secret_key()) {
+  $form['stripe_api_link'] = array(
+    '#markup' => t('Stripe resources: !dashboard | !api_keys | !docs<br /><br />', array(
+      '!dashboard' => l(t('Dashboard'), 'https://dashboard.stripe.com', array('attributes' => array('target' => '_blank'))),
+      '!api_keys' => l(t('API Keys'), 'https://dashboard.stripe.com/account/apikeys', array('attributes' => array('target' => '_blank'))),
+      '!docs' => l(t('Docs'), 'https://stripe.com/docs/api', array('attributes' => array('target' => '_blank'))),
+    )),
+  );
+
+  if (stripe_get_secret_key()) {
     $form['stripe_test'] = array(
       '#type' => 'button',
       '#value' => t('Test Stripe Connection'),
       '#ajax' => array(
-        'callback' => '_stripe_api_admin_test_connection',
+        'callback' => 'stripe_test_connection',
         'wrapper' => 'stripe-connect-results',
         'method' => 'append',
       ),
@@ -88,9 +89,9 @@ function stripe_api_admin_settings_form($form, $form_state) {
 /**
  * Submit handler for stripe_checkout_admin_settings_form().
  */
-function stripe_api_admin_settings_form_submit($form, &$form_state) {
-  $config = config('stripe_api.settings');
-  $secretconfig = config('stripe_api_secret.settings');
+function stripe_admin_settings_form_submit($form, &$form_state) {
+  $config = config('stripe.settings');
+  $secretconfig = config('stripe_secret.settings');
   $values = $form_state['values'];
 
   $config->set('stripe_api_mode' , $values['stripe_api_mode']);
@@ -108,7 +109,7 @@ function stripe_api_admin_settings_form_submit($form, &$form_state) {
 /**
  * AJAX callback to test the Stripe connection.
  */
-function _stripe_api_admin_test_connection($form, $form_state) {
+function stripe_test_connection($form, $form_state) {
   $account = stripe_api_call('account', 'retrieve');
   if ($account && $account->email) {
     return 'Success! Account email: ' . $account->email;

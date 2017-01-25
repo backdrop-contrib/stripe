@@ -1,6 +1,6 @@
 <?php
 /**
- * Stripe API hook examples.
+ * Stripe hook examples.
  */
 
 /**
@@ -18,7 +18,7 @@
  *
  * @throws \Exception
  */
-function hook_stripe_api_webhook($type, $data, Stripe\Event $event = NULL) {
+function hook_stripe_webhook($type, $data, Stripe\Event $event = NULL) {
   switch ($type) {
     case 'customer.created':
       // Create a new Backdrop user for this customer.
@@ -45,7 +45,7 @@ function hook_stripe_api_webhook($type, $data, Stripe\Event $event = NULL) {
  *
  * @throws \Exception
  */
-function hook_stripe_api_webhook_EVENT_TYPE($data, Stripe\Event $event = NULL) {
+function hook_stripe_webhook_EVENT_TYPE($data, Stripe\Event $event = NULL) {
   $email = $data->object->email;
   if (!user_load_by_mail($email)) {
     user_save(NULL, array(

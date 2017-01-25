@@ -1,7 +1,0 @@
-type = module
-name = Stripe API
-description = Provides an integration to use the Stripe API library.
-backdrop = 1.x
-package = Stripe
-
-configure = admin/config/services/stripe_api
