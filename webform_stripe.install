@@ -68,10 +68,13 @@ function webform_stripe_uninstall() {
   variable_del('webform_stripe_checkout_settings');
 
   // Delete Stripe Payment components and their data from webforms.
-  $cids = db_query("SELECT cid FROM {webform_component} WHERE type = 'webform_stripe'")->fetchCol();
-  if (!empty($cids)) {
-    db_query("DELETE FROM {webform_component} WHERE type = 'webform_stripe'");
-    db_query("DELETE FROM {webform_submitted_data} WHERE cid IN (:cid)", array(':cid' => $cids));
+  $components = db_query("SELECT nid, cid FROM {webform_component} WHERE type = 'webform_stripe'")->fetchAll();
+  db_query("DELETE FROM {webform_component} WHERE type = 'webform_stripe'");
+  foreach ($components as $component) {
+    db_query("DELETE FROM {webform_submitted_data} WHERE nid = :nid AND cid = :cid", array(
+      ':nid' => $component->nid,
+      ':cid' => $component->cid,
+    ));
   }
 }
 
