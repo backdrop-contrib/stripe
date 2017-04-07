@@ -29,12 +29,11 @@ function webform_stripe_menu() {
     'page arguments' => array('webform_stripe_settings_form'),
     'file' => 'webform_stripe.admin.inc',
   );
-  $items['webform-stripe-ajax/%'] = array(
+  $items['webform-stripe-ajax'] = array(
     'type' => MENU_CALLBACK,
     'title' => 'Ajax callback',
     'access callback' => TRUE,
     'page callback' => '_webform_stripe_form_webform_client_form_ajax_callback',
-    'page arguments' => array(1),
     'delivery callback' => 'ajax_deliver',
     'theme callback' => 'ajax_base_page_theme',
     'file' => 'webform_stripe.webform.inc',

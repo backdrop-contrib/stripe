@@ -775,7 +775,14 @@ function _webform_stripe_form_webform_client_form_alter(&$form, &$form_state) {
 /**
  * Webform ajax callback.
  */
-function _webform_stripe_form_webform_client_form_ajax_callback($cid) {
+function _webform_stripe_form_webform_client_form_ajax_callback() {
+  // Get component ID, or return not found.
+  $args = func_get_args();
+  $cid = reset($args);
+  if (empty($cid)) {
+    return MENU_NOT_FOUND;
+  }
+
   // Get the form, build it, and validate it. See ajax_form_callback() and
   // drupal_process_form().
   list($form, $form_state, $form_id, $form_build_id, $commands) = ajax_get_form();
