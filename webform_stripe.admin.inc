@@ -12,28 +12,28 @@ function webform_stripe_settings_form() {
       '!url' => 'https://dashboard.stripe.com/account/apikeys',
     )),
   );
-  $form['keys']['webform_stripe_test_secret_key'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Test Secret Key'),
-    '#default_value' => variable_get('webform_stripe_test_secret_key', ''),
-    '#required' => TRUE,
-  );
   $form['keys']['webform_stripe_test_publishable_key'] = array(
     '#type' => 'textfield',
     '#title' => t('Test Publishable Key'),
     '#default_value' => variable_get('webform_stripe_test_publishable_key', ''),
     '#required' => TRUE,
   );
-  $form['keys']['webform_stripe_live_secret_key'] = array(
+  $form['keys']['webform_stripe_test_secret_key'] = array(
     '#type' => 'textfield',
-    '#title' => t('Live Secret Key'),
-    '#default_value' => variable_get('webform_stripe_live_secret_key', ''),
+    '#title' => t('Test Secret Key'),
+    '#default_value' => variable_get('webform_stripe_test_secret_key', ''),
     '#required' => TRUE,
   );
   $form['keys']['webform_stripe_live_publishable_key'] = array(
     '#type' => 'textfield',
     '#title' => t('Live Publishable Key'),
     '#default_value' => variable_get('webform_stripe_live_publishable_key', ''),
+    '#required' => TRUE,
+  );
+  $form['keys']['webform_stripe_live_secret_key'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Live Secret Key'),
+    '#default_value' => variable_get('webform_stripe_live_secret_key', ''),
     '#required' => TRUE,
   );
 
