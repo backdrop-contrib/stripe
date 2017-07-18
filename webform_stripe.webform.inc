@@ -739,8 +739,9 @@ function _webform_stripe_form_webform_client_form_alter(&$form, &$form_state) {
         // Add class to form to help Drupal.ajax.prototype.beforeSubmit().
         $form['#attributes']['class'][] = 'webform-stripe-form';
 
-        // Add submit callback.
-        $form['#submit'][] = '_webform_stripe_process_token';
+        // Replace Webform's submit callback with our own.
+        $key = array_search('webform_client_form_submit', $form['#submit']);
+        $form['#submit'][$key] = '_webform_stripe_process_token';
 
         // Creating; set default submit button text and attach ajax.
         if (empty($form['#submission'])) {
@@ -1057,14 +1058,17 @@ function _webform_stripe_process_token(&$form, &$form_state) {
         'currency' => $settings['currency'],
       );
     }
+
+    // Charge was successful, so continue with saving the submission.
+    webform_client_form_submit($form, $form_state);
   }
 
   // Transaction failed.
   catch(\Stripe\Error\Base $e) {
-    drupal_set_message(t('The payment was unsuccessful.'), 'error');
-    watchdog('webform_stripe', 'Payment was unsuccessful with message: %message', array(
+    drupal_set_message(t('The payment was unsuccessful: %message', array(
       '%message' => $e->getMessage(),
-    ), WATCHDOG_ERROR, l(t('view'), "node/{$component['nid']}/webform"));
+    )), 'error');
+    $form_state['rebuild'] = TRUE;
   }
 
   // Update submission data.
