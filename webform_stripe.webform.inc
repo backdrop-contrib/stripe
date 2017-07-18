@@ -428,6 +428,7 @@ function _webform_stripe_form_webform_component_edit_form_alter(&$form, &$form_s
   // the form state to _webform_edit_webform_stripe().
   if ($form['type']['#value'] === 'webform_stripe') {
     $component = $form_state['build_info']['args'][1];
+    webform_component_include('select');
 
     // Add ajax handler to amount component field.
     $form['amount']['amount_value_component']['#ajax'] = array(
@@ -981,6 +982,7 @@ function _webform_stripe_process_dynamic_value($type, $component, $data) {
       // For descriptions, if the value is still empty, grab it from the select
       // option's value.
       if (empty($value) && $type === 'description_value') {
+        webform_component_include('select');
         $options = _webform_select_options($dynamic_component);
         $value = $options[$key];
       }
