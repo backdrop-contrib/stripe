@@ -133,7 +133,7 @@ function _webform_edit_webform_stripe($component) {
   // component.
   $amount_components = array();
   foreach ($node->webform['components'] as $other_component) {
-    if (in_array($other_component['type'], array('textfield', 'number', 'select'))) {
+    if (in_array($other_component['type'], array('textfield', 'number', 'select', 'formula'))) {
       if ($other_component['type'] === 'select' && $other_component['extra']['multiple']) {
         continue;
       }
@@ -143,7 +143,9 @@ function _webform_edit_webform_stripe($component) {
   $form['amount']['amount_value_component'] = array(
     '#type' => 'select',
     '#title' => t('Dynamic amount'),
-    '#description' => t("Sets the component which will determine the amount charged. Eligible components include: Textfield, Number, Select options (not multiple)."),
+    '#description' => t('Sets the component which will determine the amount charged. Eligible components include: Textfield, Number, Select options (not multiple), <a href="!webform_calculator">Formula</a>.', array(
+      '!webform_calculator' => 'https://www.drupal.org/project/webform_calculator',
+    )),
     '#options' => $amount_components,
     '#empty_option' => '- ' . t('Select a component') . ' -',
     '#default_value' => $component['extra']['amount_value_component'],
