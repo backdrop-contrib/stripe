@@ -1059,6 +1059,9 @@ function _webform_stripe_process_token(&$form, &$form_state) {
       );
     }
 
+    // Update submission data.
+    $form_state['values']['submitted'][$component['cid']] = serialize($value);
+
     // Charge was successful, so continue with saving the submission.
     webform_client_form_submit($form, $form_state);
   }
@@ -1070,14 +1073,6 @@ function _webform_stripe_process_token(&$form, &$form_state) {
     )), 'error');
     $form_state['rebuild'] = TRUE;
   }
-
-  // Update submission data.
-  db_query("UPDATE {webform_submitted_data} SET data = :value WHERE nid = :nid AND sid = :sid AND cid = :cid", array(
-    ':value' => serialize($value),
-    ':nid' => $component['nid'],
-    ':sid' => $sid,
-    ':cid' => $component['cid'],
-  ));
 }
 
 /**
