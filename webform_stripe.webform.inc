@@ -924,6 +924,14 @@ function _webform_stripe_process_checkout_settings($component, $data) {
       break;
   }
 
+  // Allow modules to alter Stripe Checkout settings.
+  $context = array(
+    'node' => $node,
+    'component' => $component,
+    'data' => $data,
+  );
+  drupal_alter('webform_stripe_checkout_settings', $settings, $context);
+
   // Prepare for Javascript.
   foreach ($settings as $key => $setting) {
     // Ensure boolean values have correct type.
