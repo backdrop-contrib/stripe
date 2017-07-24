@@ -222,7 +222,7 @@ function webform_stripe_update_7005() {
   // If a Stripe Payment was found, check for dependencies.
   if (!empty($submitted_data)) {
     $library = webform_stripe_load_library();
-    if ($library['loaded']) {
+    if (!$library['loaded']) {
       throw new DrupalUpdateException('The Stripe PHP API library is missing.');
     }
     if (!variable_get('webform_stripe_test_secret_key', '') || !variable_get('webform_stripe_live_secret_key', '')) {
