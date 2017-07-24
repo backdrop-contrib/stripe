@@ -111,7 +111,7 @@ function webform_stripe_update_7001() {
 }
 
 /**
- * Converts old API keys to live keys.
+ * Converts API keys to separate live and test keys.
  */
 function webform_stripe_update_7002() {
   variable_set('webform_stripe_live_secret_key', variable_get('webform_stripe_secret_key', ''));
