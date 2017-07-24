@@ -116,6 +116,8 @@ function webform_stripe_update_7001() {
 function webform_stripe_update_7002() {
   variable_set('webform_stripe_live_secret_key', variable_get('webform_stripe_secret_key', ''));
   variable_set('webform_stripe_live_publishable_key', variable_get('webform_stripe_publishable_key', ''));
+  variable_set('webform_stripe_test_secret_key', variable_get('webform_stripe_secret_key', ''));
+  variable_set('webform_stripe_test_publishable_key', variable_get('webform_stripe_publishable_key', ''));
   variable_del('webform_stripe_secret_key');
   variable_del('webform_stripe_publishable_key');
 
