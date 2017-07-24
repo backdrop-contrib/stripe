@@ -13,14 +13,14 @@ function webform_stripe_requirements($phase) {
     $stripe = webform_stripe_load_library();
     if ($stripe['loaded']) {
       $requirements['webform_stripe_library'] = array(
-        'title' => $t('Stripe PHP library'),
+        'title' => $t('Webform Stripe PHP library'),
         'value' => $t('Installed'),
         'severity' => REQUIREMENT_OK,
       );
     }
     else {
       $requirements['webform_stripe_library'] = array(
-        'title' => $t('Stripe PHP library'),
+        'title' => $t('Webform Stripe PHP library'),
         'value' => $t('Missing!'),
         'severity' => REQUIREMENT_ERROR,
         'description' => $t('Stripe library missing. Download the Stripe library from <a href="!url">!url</a> and place it at %path.', array(
@@ -33,14 +33,14 @@ function webform_stripe_requirements($phase) {
     // Check for Stripe keys.
     if (variable_get('webform_stripe_test_secret_key', '') && variable_get('webform_stripe_test_publishable_key', '') && variable_get('webform_stripe_live_secret_key', '') && variable_get('webform_stripe_live_publishable_key', '')) {
       $requirements['webform_stripe_keys'] = array(
-        'title' => $t('Stripe API keys'),
+        'title' => $t('Webform Stripe API keys'),
         'value' => $t('Configured'),
         'severity' => REQUIREMENT_OK,
       );
     }
     else {
       $requirements['webform_stripe_keys'] = array(
-        'title' => $t('Stripe API keys'),
+        'title' => $t('Webform Stripe API keys'),
         'value' => $t('Not configured'),
         'severity' => REQUIREMENT_ERROR,
         'description' => $t('Stripe API keys are not configured. <a href="!url">Configure them here</a>.', array(
