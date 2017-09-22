@@ -6,6 +6,12 @@
 define('WEBFORM_STRIPE_PAY_TEXT', t('Pay with Credit Card'));
 
 /**
+ * States for hook_webform_stripe_checkout_settings_alter().
+ */
+define('WEBFORM_STRIPE_SETTINGS_CHECKOUT', 'checkout');
+define('WEBFORM_STRIPE_SETTINGS_PROCESS', 'process');
+
+/**
  * Implements hook_permission().
  */
 function webform_stripe_permission() {

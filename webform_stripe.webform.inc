@@ -814,7 +814,7 @@ function _webform_stripe_form_webform_client_form_ajax_callback() {
     '#commands' => array(
       array(
         'command' => 'webformStripeCheckout',
-        'params' => _webform_stripe_process_checkout_settings($component, $form_state['values']['submitted']),
+        'params' => _webform_stripe_process_checkout_settings($component, $form_state['values']['submitted'], WEBFORM_STRIPE_SETTINGS_CHECKOUT),
       ),
     ),
   );
@@ -823,7 +823,7 @@ function _webform_stripe_form_webform_client_form_ajax_callback() {
 /**
  * Builds final Stripe Checkout component settings.
  */
-function _webform_stripe_process_checkout_settings($component, $data) {
+function _webform_stripe_process_checkout_settings($component, $data, $state) {
   // Load node.
   $node = node_load($component['nid']);
 
@@ -926,11 +926,20 @@ function _webform_stripe_process_checkout_settings($component, $data) {
       break;
   }
 
-  // Allow modules to alter Stripe Checkout settings.
+  // Allow modules to alter Stripe Checkout settings, keying data by form key
+  // to assist hook implementations.
+  $form = array();
+  foreach ($node->webform['components'] as $component) {
+    if (!empty($component['form_key'])) {
+      $form[$component['form_key']] = isset($data[$component['form_key']]) ? $data[$component['form_key']] : (isset($data[$component['cid']]) ? $data[$component['cid']] : NULL);
+    }
+  }
   $context = array(
     'node' => $node,
     'component' => $component,
     'data' => $data,
+    'form' => $form,
+    'state' => $state,
   );
   drupal_alter('webform_stripe_checkout_settings', $settings, $context);
 
@@ -1010,7 +1019,7 @@ function _webform_stripe_process_token(&$form, &$form_state) {
   }
 
   // Process settings.
-  $settings = _webform_stripe_process_checkout_settings($component, $form_state['values']['submitted']);
+  $settings = _webform_stripe_process_checkout_settings($component, $form_state['values']['submitted'], WEBFORM_STRIPE_SETTINGS_PROCESS);
 
   // Parse Stripe token and email.
   list($token, $email) = explode(':', $value);
