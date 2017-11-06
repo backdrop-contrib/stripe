@@ -454,7 +454,7 @@ function _webform_stripe_form_webform_component_edit_form_alter(&$form, &$form_s
             '#type' => 'textfield',
             '#field_suffix' => check_plain($value),
             '#size' => 10,
-            '#default_value' => isset($component['extra']['amount_value_mapping'][$key]) ? $component['extra']['amount_value_mapping'][$key] : '',
+            '#default_value' => isset($component['extra']['amount_value_mapping'][$key]) ? $component['extra']['amount_value_mapping'][$key] : $key,
           );
         }
       }
