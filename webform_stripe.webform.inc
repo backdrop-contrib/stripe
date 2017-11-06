@@ -983,11 +983,19 @@ function _webform_stripe_process_dynamic_value($type, $component, $data) {
   // Find value in data, either from form_key or cid.
   $value = isset($data[$dynamic_component['form_key']]) ? $data[$dynamic_component['form_key']] : (isset($data[$dynamic_component['cid']]) ? $data[$dynamic_component['cid']] : NULL);
 
-  // For selects, grab the key and find the mapped amount.
+  // Select component.
   if ($value !== NULL && $dynamic_component['type'] === 'select') {
     $key = _webform_submit_select($dynamic_component, $value);
-    if (!is_array($value) && array_key_exists($key, $component['extra']["{$type}_mapping"])) {
-      $value = $component['extra']["{$type}_mapping"][$key];
+    if (!is_array($value)) {
+      // Translate value from option/amount map.
+      if (array_key_exists($key, $component['extra']["{$type}_mapping"])) {
+        $value = $component['extra']["{$type}_mapping"][$key];
+      }
+      // Otherwise, use submitted value (aka, support for "Select or Other"
+      // fields or newly added but not yet mapped options).
+      else {
+        $value = $key;
+      }
 
       // For descriptions, if the value is still empty, grab it from the select
       // option's value.
