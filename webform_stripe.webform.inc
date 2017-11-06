@@ -38,7 +38,7 @@ function _webform_defaults_webform_stripe() {
 /**
  * Gets Stripe plans.
  */
-function _webform_stripe_get_plans($test_mode) {
+function _webform_stripe_get_plans($test_mode, $include_id = FALSE) {
   $plans = array();
   $secret_key = $test_mode ? variable_get('webform_stripe_test_secret_key', '') : variable_get('webform_stripe_live_secret_key', '');
 
@@ -48,6 +48,9 @@ function _webform_stripe_get_plans($test_mode) {
     try {
       foreach (\Stripe\Plan::all()->data as $plan) {
         $plans[$plan->id] = $plan->name;
+        if ($include_id) {
+          $plans[$plan->id] .= ' (' . $plan->id . ')';
+        }
       }
     }
     catch(\Stripe\Error\Base $e) {
@@ -472,7 +475,7 @@ function _webform_stripe_form_webform_component_edit_form_alter(&$form, &$form_s
     ));
 
     // Set plan options and update description.
-    $form['amount']['amount_plan']['#options'] = _webform_stripe_get_plans($test_mode);
+    $form['amount']['amount_plan']['#options'] = _webform_stripe_get_plans($test_mode, TRUE);
     $form['amount']['amount_plan']['#description'] .= ' ' . $plan_message;
 
     // Add ajax handler to plan component field.
@@ -493,7 +496,7 @@ function _webform_stripe_form_webform_component_edit_form_alter(&$form, &$form_s
       foreach ($options as $key => $value) {
         $form['amount']['amount_plan_mapping'][$key] = array(
           '#type' => 'select',
-          '#options' => _webform_stripe_get_plans($test_mode),
+          '#options' => _webform_stripe_get_plans($test_mode, TRUE),
           '#empty_option' => '- ' . t('Select a plan') . ' -',
           '#field_suffix' => check_plain($value),
           '#default_value' => isset($component['extra']['amount_plan_mapping'][$key]) ? $component['extra']['amount_plan_mapping'][$key] : '',
