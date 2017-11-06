@@ -104,8 +104,8 @@ function _webform_edit_webform_stripe($component) {
   );
   $form['amount']['amount_type'] = array(
     '#type' => 'radios',
-    '#title' => t('Amount type'),
-    '#description' => t('Choose "amount" for a one-time charge, or "subscription" for a recurring charge. Choose "fixed" to manually set the amount/plan, or "dynamic" to determine it from another component on this form.'),
+    '#title' => t('Amount'),
+    '#description' => t('Choose "amount" for a one-time charge, or "subscription" for a recurring charge. Choose "fixed" to manually set the amount or subscription plan, or "dynamic" to determine it from another component on this form.'),
     '#options' => array(
       'value' => t('Fixed amount'),
       'value_component' => t('Dynamic amount'),
@@ -245,7 +245,7 @@ function _webform_edit_webform_stripe($component) {
   );
   $form['description']['description_type'] = array(
     '#type' => 'radios',
-    '#title' => t('Description type'),
+    '#title' => t('Description'),
     '#description' => t('Choose "fixed" to manually set the description, "dynamic" to determine it from another component on this form, or "subscription plan" to use the description of the selected plan.'),
     '#options' => array(
       'value' => t('Fixed description'),
@@ -318,7 +318,7 @@ function _webform_edit_webform_stripe($component) {
   );
   $form['email']['email_type'] = array(
     '#type' => 'radios',
-    '#title' => t('Email type'),
+    '#title' => t('Email address'),
     '#options' => array(
       'user' => t('Use email address of logged-in user'),
       'component' => t('Dynamic email address'),
@@ -359,7 +359,7 @@ function _webform_edit_webform_stripe($component) {
   );
   $form['image']['image_type'] = array(
     '#type' => 'radios',
-    '#title' => t('Image type'),
+    '#title' => t('Image'),
     '#options' => array(
       'default' => t('Default image'),
       'file' => t('Custom image upload'),
