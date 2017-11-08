@@ -609,15 +609,18 @@ function _webform_stripe_form_webform_component_edit_form_alter(&$form, &$form_s
     $form['amount']['amount_plan_qty_mapping']['#type'] = 'container';
     $cid = isset($form_state['values']['extra']['amount_plan_qty_component']) ? $form_state['values']['extra']['amount_plan_qty_component'] : $component['extra']['amount_plan_qty_component'];
     if (!empty($cid) && isset($form['#node']->webform['components'][$cid])) {
-      $form['amount']['amount_plan_qty_mapping']['#type'] = 'fieldset';
-      $options = _webform_select_options($form['#node']->webform['components'][$cid]);
-      foreach ($options as $key => $value) {
-        $form['amount']['amount_plan_qty_mapping'][$key] = array(
-          '#type' => 'textfield',
-          '#field_suffix' => check_plain($value),
-          '#size' => 10,
-          '#default_value' => isset($component['extra']['amount_plan_qty_mapping'][$key]) ? $component['extra']['amount_plan_qty_mapping'][$key] : $key,
-        );
+      $dynamic_component = $form['#node']->webform['components'][$cid];
+      if ($dynamic_component['type'] === 'select') {
+        $form['amount']['amount_plan_qty_mapping']['#type'] = 'fieldset';
+        $options = _webform_select_options($form['#node']->webform['components'][$cid]);
+        foreach ($options as $key => $value) {
+          $form['amount']['amount_plan_qty_mapping'][$key] = array(
+            '#type' => 'textfield',
+            '#field_suffix' => check_plain($value),
+            '#size' => 10,
+            '#default_value' => isset($component['extra']['amount_plan_qty_mapping'][$key]) ? $component['extra']['amount_plan_qty_mapping'][$key] : $key,
+          );
+        }
       }
     }
 
