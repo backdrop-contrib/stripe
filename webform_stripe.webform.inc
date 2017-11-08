@@ -42,23 +42,27 @@ function _webform_defaults_webform_stripe() {
 /**
  * Gets Stripe plans.
  */
-function _webform_stripe_get_plans($test_mode, $include_id = FALSE) {
-  $plans = array();
-  $secret_key = $test_mode ? variable_get('webform_stripe_test_secret_key', '') : variable_get('webform_stripe_live_secret_key', '');
+function _webform_stripe_get_plans($test_mode) {
+  $plans = &drupal_static('webform_stripe_plans');
 
-  // Load list of Stripe plans.
-  if (($library = webform_stripe_load_library()) && $library['loaded'] && !empty($secret_key)) {
-    \Stripe\Stripe::setApiKey($secret_key);
-    try {
-      foreach (\Stripe\Plan::all()->data as $plan) {
-        $plans[$plan->id] = $plan->name;
-        if ($include_id) {
-          $plans[$plan->id] .= ' (' . $plan->id . ')';
+  if (!isset($plans)) {
+    $secret_key = $test_mode ? variable_get('webform_stripe_test_secret_key', '') : variable_get('webform_stripe_live_secret_key', '');
+
+    // Load list of Stripe plans.
+    if (($library = webform_stripe_load_library()) && $library['loaded'] && !empty($secret_key)) {
+      \Stripe\Stripe::setApiKey($secret_key);
+      try {
+        foreach (\Stripe\Plan::all()->data as $plan) {
+          $plans[$plan->id] = array(
+            'id' => $plan->id,
+            'name' => $plan->name,
+            'amount' => $plan->amount,
+          );
         }
       }
-    }
-    catch(\Stripe\Error\Base $e) {
+      catch(\Stripe\Error\Base $e) {
 
+      }
     }
   }
 
@@ -568,7 +572,14 @@ function _webform_stripe_form_webform_component_edit_form_alter(&$form, &$form_s
     ));
 
     // Set plan options and update description.
-    $form['amount']['amount_plan']['#options'] = _webform_stripe_get_plans($test_mode, TRUE);
+    $plan_options = array();
+    foreach (_webform_stripe_get_plans($test_mode) as $plan) {
+      $plan_options[$plan['id']] = t('@name (@id)', array(
+        '@name' => $plan['name'],
+        '@id' => $plan['id'],
+      ));
+    }
+    $form['amount']['amount_plan']['#options'] = $plan_options;
     $form['amount']['amount_plan']['#description'] .= ' ' . $plan_message;
 
     // Add ajax handler to plan component field.
@@ -589,7 +600,7 @@ function _webform_stripe_form_webform_component_edit_form_alter(&$form, &$form_s
       foreach ($options as $key => $value) {
         $form['amount']['amount_plan_mapping'][$key] = array(
           '#type' => 'select',
-          '#options' => _webform_stripe_get_plans($test_mode, TRUE),
+          '#options' => $plan_options,
           '#empty_option' => '- ' . t('Select a plan') . ' -',
           '#field_suffix' => check_plain($value),
           '#default_value' => isset($component['extra']['amount_plan_mapping'][$key]) ? $component['extra']['amount_plan_mapping'][$key] : '',
@@ -989,17 +1000,11 @@ function _webform_stripe_process_checkout_settings($component, $data, $state) {
     // Fixed amount.
     case 'value':
       $settings['amount'] = $component['extra']['amount_value'];
-      if (!empty($component['extra']['amount_value_multiplier'])) {
-        $settings['amount'] *= $component['extra']['amount_value_multiplier'];
-      }
       break;
 
     // Dynamic amount.
     case 'value_component':
       $settings['amount'] = _webform_stripe_process_dynamic_value('amount_value', $component, $data);
-      if (!empty($component['extra']['amount_value_multiplier'])) {
-        $settings['amount'] *= $component['extra']['amount_value_multiplier'];
-      }
       break;
 
     // Fixed plan.
@@ -1013,8 +1018,14 @@ function _webform_stripe_process_checkout_settings($component, $data, $state) {
       break;
   }
 
-  // Determine plan quantity.
-  if (in_array($component['extra']['amount_type'], array('plan', 'plan_component'))) {
+  // Multiply amount (i.e. convert from pennies to dollars). This is not needed
+  // for plans because the amount is pulled in from Stripe.
+  if (!empty($settings['amount']) && !empty($component['extra']['amount_value_multiplier'])) {
+    $settings['amount'] *= $component['extra']['amount_value_multiplier'];
+  }
+
+  // Determine plan quantity and amount.
+  if (!empty($settings['plan'])) {
     switch ($component['extra']['amount_plan_qty_type']) {
       // Fixed quantity.
       case 'value':
@@ -1025,6 +1036,12 @@ function _webform_stripe_process_checkout_settings($component, $data, $state) {
       case 'component':
         $settings['plan_quantity'] = _webform_stripe_process_dynamic_value('amount_plan_qty', $component, $data);
         break;
+    }
+
+    // Multiply amount by quantity.
+    $plans = _webform_stripe_get_plans($component['extra']['test_mode']);
+    if (array_key_exists($settings['plan'], $plans)) {
+      $settings['amount'] = $plans[$settings['plan']]['amount'] * $settings['plan_quantity'];
     }
   }
 
@@ -1044,7 +1061,7 @@ function _webform_stripe_process_checkout_settings($component, $data, $state) {
     case 'plan':
       $plans = _webform_stripe_get_plans($component['extra']['test_mode']);
       if (!empty($settings['plan']) && array_key_exists($settings['plan'], $plans)) {
-        $settings['description'] = $plans[$settings['plan']];
+        $settings['description'] = $plans[$settings['plan']]['name'];
       }
       break;
   }
