@@ -22,6 +22,18 @@ function stripe_config_info() {
 }
 
 /**
+ * Implements hook_permission().
+ */
+function stripe_permission() {
+  return array(
+    'edit stripe api settings' => array(
+      'title' => t('Administer Stripe API settings'),
+      'description' => t('Grants access to Stripe credentials and settings.'),
+    ),
+  );
+}
+
+/**
  * Implements hook_menu().
  */
 function stripe_menu() {
