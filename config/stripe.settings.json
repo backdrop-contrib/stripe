@@ -1,0 +1,7 @@
+{
+    "_config_name": "stripe.settings",
+    "mode": "test",
+    "log_webhooks": 0,
+    "test_public_key": "",
+    "live_public_key": ""
+}
