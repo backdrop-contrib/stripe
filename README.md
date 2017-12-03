@@ -3,13 +3,13 @@
 This module provides a simple abstraction to use the Stripe PHP SDK. This
 module is designed to be required by other contrib/custom modules.
 
-##Dependencies
+## Dependencies
 
 - [Libraries](https://github.com/backdrop-contrib/libraries)
 - [Stripe's PHP bindings](https://github.com/stripe/stripe-php) should be
   copied into the `/libraries` directory in a folder named `stripe`.
 
-##Installation
+## Installation
 
 - Once the dependencies are in place, install this module using the [official
   Backdrop CMS instructions](https://backdropcms.org/guide/modules).
@@ -17,7 +17,7 @@ module is designed to be required by other contrib/custom modules.
   (`admin/config/services/stripe`), adding your Stripe API keys and
   setting preferences.
 
-##Usage
+## Usage
 
 The main way to make Stripe API calls is using the `stripe_api_call` function.
 
@@ -61,60 +61,30 @@ $customer->delete();
 // List customers.
 $list = stripe_api_call('customer', 'all', array('limit' => 5));
 ```
+
 This module provides a secure Stripe webhook (events are validated) and provides
-two hooks for you to implement in your custom module.
+two hooks for you to implement in your custom module. See stripe.api.php for API
+documentation.
 
-```php
-/**
- * Interact with all incoming Stripe webhooks.
- *
- * @param string $type
- *   Webhook type, such as customer.created, charge.captured, etc.
- *
- * @param object $data
- *   Incoming data object.
- *
- * @param Stripe\Event $event
- *   The verified Stripe Event that is being sent.
- *   Only available in live mode with real events (not test events).
- *
- * @throws \Exception
- */
-function hook_stripe_webhook($type, $data, Stripe\Event $event = NULL) { ... }
 
-/**
- * Interact with a specific incoming webhook type.
- *
- * @param object $data
- *   Incoming data object.
- *
- * @param Stripe\Event $event
- *   The verified Stripe Event that is being sent.
- *   Only available in live mode with real events (not test events).
- *
- * @throws \Exception
- */
-function hook_stripe_webhook_EVENT_TYPE($data, Stripe\Event $event = NULL) { ... }
-```
+This is an *unofficial* Stripe module and is not associated with Stripe.
 
-This is an *unofficial* module and is not associated with Stripe.
-
-##Issues
+## Issues
 
 Bugs and Feature requests should be reported in this module's
 [Issue Queue](https://github.com/backdrop-contrib/stripe_api/issues).
 
-##License
+## License
 
 This project is GPL v2 software. See the LICENSE.txt file in this directory for
 complete text.
 
-##Current Maintainers
+## Current Maintainers
 
 - [Laryn Kragt Bakker](https://github.com/laryn) - [CEDC.org](https://cedc.org)
 - [Jen Lampton](https://github.com/jenlampton)
 
-##Credits
+## Credits
 
  - This module was ported to Backdrop by
    [Laryn Kragt Bakker](https://github.com/laryn) -
