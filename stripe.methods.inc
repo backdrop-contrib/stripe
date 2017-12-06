@@ -23,7 +23,7 @@
  *   Returns the ApiResource or NULL on error.
  */
 function stripe_api_call($obj, $method = NULL, $params = NULL) {
-  include('libraries/init.php');
+  include_once('libraries/init.php');
   _stripe_postload_callback();
 
   $obj = ucfirst($obj);
