@@ -1082,8 +1082,6 @@ function _stripe_process_dynamic_value($type, $component, $data) {
     }
   }
 
-  dpm('amount');
-  dpm($value);
   return $value;
 }
 
