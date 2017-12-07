@@ -1,0 +1,117 @@
+<?php
+/**
+ * @file
+ * Includes install, uninstall, update, and requirements functionality.
+ */
+
+/**
+ * Upgrade path from Stripe API module to Stripe module.
+ */
+function stripe_install() {
+  // Create new config files.
+  $config = config('stripe.settings');
+  $secretconfig = config('stripe_secret.settings');
+
+  // Pull values from variables to config.
+  include_once('core/includes/update.inc');
+  $config->set('mode', update_variable_get('stripe_api_mode', 'test'));
+  $config->set('log_webhooks' , update_variable_get('stripe_api_log_webhooks', FALSE));
+  $config->set('test_public_key' , update_variable_get('stripe_api_test_public_key', ''));
+  $config->set('live_public_key' , update_variable_get('stripe_api_live_public_key', ''));
+  $secretconfig->set('test_secret_key' , update_variable_get('stripe_api_test_secret_key', ''));
+  $secretconfig->set('live_secret_key' , update_variable_get('stripe_api_live_secret_key', ''));
+
+  // Delete varaibles.
+  update_variable_del('stripe_api_mode');
+  update_variable_del('stripe_api_log_webhooks');
+  update_variable_del('stripe_api_test_public_key');
+  update_variable_del('stripe_api_live_public_key');
+  update_variable_del('stripe_api_test_secret_key');
+  update_variable_del('stripe_api_live_secret_key');
+
+  // Update from Stripe API to Stripe (overwrite variables if necessary).
+  $api_config = config('stripe_api.settings');
+  if (!$api_config->isNew()) {
+    $config->set('mode' , $api_config->get('stripe_api_mode', 'test'));
+    $config->set('log_webhooks' , $api_config->get('stripe_api_log_webhooks', FALSE));
+    $config->set('test_public_key' , $api_config->get('stripe_api_test_public_key', ''));
+    $config->set('live_public_key' , $api_config->get('stripe_api_live_public_key', ''));
+  }
+  $api_secretconfig = config('stripe_api_secret.settings');
+  if (!$api_config->isNew()) {
+    $secretconfig->set('test_secret_key' , $api_secretconfig->get('stripe_api_test_secret_key', ''));
+    $secretconfig->set('live_secret_key' , $api_secretconfig->get('stripe_api_live_secret_key', ''));
+  }
+
+  // Save new config.
+  $config->save();
+  $secretconfig->save();
+
+  // Delete old config.
+  $api_config->delete();
+  $api_secretconfig->delete();
+
+  // Uninstall the stripe_api module.
+  db_query("DELETE from {system} WHERE type = 'module' AND name = 'stripe_api'");
+}
+
+/**
+ * Implements hook_requirements().
+ */
+function stripe_requirements($phase) {
+  $requirements = array();
+
+  if ($phase == 'runtime') {
+    $t = get_t();
+
+    // Check for the Stripe PHP library.
+    $stripe = stripe_load_library();
+    if ($stripe['included']) {
+      $requirements['stripe_library'] = array(
+        'title' => $t('Stripe PHP library'),
+        'value' => $t('Using included Stripe PHP library'),
+        'severity' => REQUIREMENT_OK,
+      );
+
+      // Check for Stripe keys.
+      if (stripe_get_public_key() != '' && stripe_get_secret_key() != '') {
+        $api_keys_configured = TRUE;
+      }
+    }
+    elseif ($stripe['loaded']) {
+      $requirements['stripe_library'] = array(
+        'title' => $t('Stripe PHP library'),
+        'value' => $t('Possible conflict'),
+        'severity' => REQUIREMENT_WARNING,
+        'description' => $t('Duplicate Stripe API libraries found. It\'s recommended that you disable/uninstall any modules other than the offical Stripe module.', array(
+        )),
+      );
+
+      // Check for Stripe keys.
+      if (variable_get('stripe_test_secret_key', '') && variable_get('stripe_test_publishable_key', '') && variable_get('stripe_live_secret_key', '') && variable_get('stripe_live_publishable_key', '')) {
+        $api_keys_configured = TRUE;
+      }
+    }
+
+
+    if ($api_keys_configured) {
+      $requirements['stripe_keys'] = array(
+        'title' => $t('Stripe API keys'),
+        'value' => $t('API Keys Properly Configured'),
+        'severity' => REQUIREMENT_OK,
+      );
+    }
+    else {
+      $requirements['stripe_keys'] = array(
+        'title' => $t('Stripe API keys'),
+        'value' => $t('Not configured'),
+        'severity' => REQUIREMENT_ERROR,
+        'description' => $t('Stripe API keys are not configured. <a href="!url">Configure them here</a>.', array(
+          '!url' => url('admin/config/services/webform-stripe'),
+        )),
+      );
+    }
+  }
+
+  return $requirements;
+}

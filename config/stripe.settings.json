@@ -1,0 +1,17 @@
+{
+    "_config_name": "stripe.settings",
+    "mode": "test",
+    "log_webhooks": 0,
+    "test_public_key": "",
+    "live_public_key": "",
+    "name": "",
+    "currency": "USD",
+    "locale": "auto",
+    "zip_code": 0,
+    "billing_address": 0,
+    "shipping_address": 0,
+    "allow_remember_me": 0,
+    "bitcoin": 0,
+    "alipay": 0,
+    "alipay_reusable": 0
+}

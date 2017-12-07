@@ -23,8 +23,8 @@
  *   Returns the ApiResource or NULL on error.
  */
 function stripe_api_call($obj, $method = NULL, $params = NULL) {
-  include('libraries/init.php');
-  _stripe_api_postload_callback();
+  include_once('libraries/init.php');
+  _stripe_postload_callback();
 
   $obj = ucfirst($obj);
   $class = 'Stripe\\' . $obj;
@@ -32,7 +32,7 @@ function stripe_api_call($obj, $method = NULL, $params = NULL) {
     try {
       return call_user_func(array($class, $method), $params);
     } catch (Exception $e) {
-      watchdog('stripe_api', 'Error: @error <br /> @args', array(
+      watchdog('stripe', 'Error: @error <br /> @args', array(
         '@args' => json_encode(array(
           'object' => $obj,
           'method' => $method,
@@ -44,4 +44,11 @@ function stripe_api_call($obj, $method = NULL, $params = NULL) {
     }
   }
   return $class;
+}
+
+/**
+ * Post-load callback for the Stripe PHP Library.
+ */
+function _stripe_postload_callback() {
+  \Stripe\Stripe::setApiKey(stripe_get_secret_key());
 }

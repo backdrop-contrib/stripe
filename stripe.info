@@ -1,0 +1,7 @@
+type = module
+name = Stripe
+description = Integrates Backdrop CMS with the Stripe payment gateway.
+backdrop = 1.x
+package = Stripe
+
+configure = admin/config/services/stripe

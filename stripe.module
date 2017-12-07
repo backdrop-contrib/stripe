@@ -1,0 +1,303 @@
+<?php
+/**
+ * @file
+ * Contains hook and methods for the Stripe API module.
+ */
+
+// Define the checkout javascript location.
+define('STRIPE_API_CHECKOUT_JS', 'https://checkout.stripe.com/checkout.js');
+
+ // Default button texts.
+define('STRIPE_PAY_TEXT', t('Pay with Credit Card'));
+
+// States for hook_webform_stripe_checkout_settings_alter().
+define('STRIPE_SETTINGS_CHECKOUT', 'checkout');
+define('STRIPE_SETTINGS_PROCESS', 'process');
+
+// Lode the file that contains the magic.
+module_load_include('inc', 'stripe', 'stripe.methods');
+
+if (module_exists('webform')) {
+  module_load_include('inc', 'stripe', 'stripe.webform');
+}
+
+/**
+ * Implements hook_config_info().
+ */
+function stripe_config_info() {
+  $prefixes['stripe.settings'] = array(
+    'label' => t('Stripe API settings'),
+    'group' => t('Configuration'),
+  );
+  return $prefixes;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function stripe_permission() {
+  return array(
+    'edit stripe api settings' => array(
+      'title' => t('Administer Stripe API settings'),
+      'description' => t('Grants access to Stripe credentials and settings.'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function stripe_menu() {
+  $items['admin/config/services/stripe'] = array(
+    'type' => MENU_NORMAL_ITEM,
+    'title' => 'Stripe',
+    'page callback' => 'backdrop_get_form',
+    'page arguments' => array('stripe_admin_settings_form'),
+    'access arguments' => array('edit stripe api settings'),
+    'description' => 'Configure Stripe credentials.',
+    'file' => 'stripe.admin.inc',
+  );
+  $items['admin/config/services/stripe/settings'] = array(
+    'title' => 'API Settings',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+  $items['stripe-ajax'] = array(
+    'type' => MENU_CALLBACK,
+    'title' => 'Ajax callback',
+    'access callback' => TRUE,
+    'page callback' => 'stripe_webform_client_form_ajax_callback',
+    'delivery callback' => 'ajax_deliver',
+    'theme callback' => 'ajax_base_page_theme',
+    'file' => 'stripe.webform.inc',
+  );
+
+  $items['stripe/webhook'] = array(
+    'type' => MENU_CALLBACK,
+    'access callback' => TRUE,
+    'page callback' => 'stripe_incoming_webhook',
+  );
+
+  return $items;
+}
+
+/**
+ * Page callback: Processes incoming Stripe webhooks.
+ */
+function stripe_incoming_webhook() {
+  $input = file_get_contents("php://input");
+  $event_json = json_decode($input);
+  $event = NULL;
+  // Validate the webhook if we are in LIVE mode.
+  if (config_get('stripe.settings', 'mode') === 'live' && ($event_json->livemode == TRUE || $event_json->id !== 'evt_00000000000000')) {
+    $event = stripe_api_call('event', 'retrieve', $event_json->id);
+    if (!$event) {
+      watchdog('stripe', 'Invalid webhook event: @data', array(
+        '@data' => $input,
+      ), WATCHDOG_ERROR);
+      // This webhook event is invalid.
+      drupal_add_http_header('Status', '403 Forbidden');
+      print 'Forbidden';
+      exit;
+    }
+  }
+
+  // Invoke webhooks for others to use.
+  if (isset($event_json)) {
+    module_invoke_all('stripe_webhook', $event_json->type, $event_json->data, $event);
+    module_invoke_all('stripe_webhook_' . str_replace('.', '_', $event_json->type), $event_json->data, $event);
+  }
+  print 'okay';
+}
+
+/**
+ * Implements hook_stripe_webhook().
+ */
+function stripe_stripe_webhook($type, $data, Stripe\Event $event = NULL) {
+  if (config_get('stripe.settings', 'log_webhooks')) {
+    watchdog('stripe', 'Processed webhook: @name<br /><br />Data: @data', array(
+      '@name' => $type,
+      '@data' => json_encode($data),
+    ), WATCHDOG_INFO);
+  }
+}
+
+/**
+ * Implements hook_system_info_alter().
+ */
+function stripe_system_info_alter(&$info, $file, $type) {
+  // Mark modules that have been integrated into stripe as merged (?)
+  if (strstr($info['name'], 'Stripe API')) {
+    $info['merged_into_core'] = TRUE;
+  }
+}
+
+/**
+ * Implements hook_webform_component_info().
+ */
+function stripe_webform_component_info() {
+  $components['stripe'] = array(
+    'label' => t('Stripe payment'),
+    'description' => t('Displays a payment button which opens the Stripe Checkout form.'),
+    'features' => array(
+      'analysis' => FALSE,
+      'conditional' => FALSE,
+      'default_value' => FALSE,
+      'email' => FALSE,
+      'description' => FALSE,
+      'required' => FALSE,
+      'private' => FALSE,
+      'title_display' => FALSE,
+      'css_classes' => FALSE,
+    ),
+    'file' => 'stripe.webform.inc',
+  );
+
+  return $components;
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for "webform_component_edit_form".
+ */
+function stripe_form_webform_component_edit_form_alter(&$form, &$form_state) {
+  form_load_include($form_state, 'inc', 'stripe', 'stripe.webform');
+  _stripe_form_webform_component_edit_form_alter($form, $form_state);
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for "webform_configure_form".
+ */
+function stripe_form_webform_configure_form_alter(&$form, &$form_state) {
+  form_load_include($form_state, 'inc', 'stripe', 'stripe.webform');
+  _stripe_form_webform_configure_form_alter($form, $form_state);
+}
+
+/**
+ * Implements hook_form_BASE_FORM_ID_alter() for "webform_client_form".
+ */
+function stripe_form_webform_client_form_alter(&$form, &$form_state, $form_id) {
+  form_load_include($form_state, 'inc', 'stripe', 'stripe.webform');
+  _stripe_form_webform_client_form_alter($form, $form_state);
+}
+
+/**
+ * Loads Stripe PHP library.
+ */
+function stripe_load_library() {
+  $stripe = array('loaded' => FALSE);
+  if (module_exists('libraries')) {
+    watchdog('stripe', t('Possible library conflict with Stripe module'), WATCHDOG_WARNING);
+    $libraries = libraries_get_libraries();
+
+    // If library exists at 'stripe' and is defined by another module (such as
+    // Ubercart Stripe), use it to avoid conflicts with loading multiple Stripe
+    // PHP libraries.
+    if (isset($libraries['stripe'])) {
+      $library = libraries_load('stripe');
+      if ($library['loaded']) {
+        return $library;
+      }
+    }
+  }
+  else {
+    include_once('libraries/init.php');
+    $stripe['included'] = TRUE;
+  }
+
+  return $stripe;
+}
+
+/**
+ * Returns the Stripe API secret key.
+ *
+ * @param string $mode
+ *   Stripe mode, either 'live' or 'test'. Leave blank to use the active mode.
+ *
+ * @return string
+ *   Returns the secret key.
+ */
+function stripe_get_secret_key($mode = '') {
+  if (!$mode) {
+    $mode = config_get('stripe.settings', 'mode');
+  }
+  return config_get('stripe_secret.settings', $mode . '_secret_key');
+}
+
+/**
+ * Returns the Stripe API public key.
+ *
+ * @param string $mode
+ *   Stripe mode, either 'live' or 'test'. Leave blank to use the active mode.
+ *
+ * @return string
+ *   Returns the public key.
+ */
+function stripe_get_public_key($mode = '') {
+  $config = config('stripe.settings');
+  if (!$mode) {
+    $mode = $config->get('mode');
+  }
+  return $config->get($mode . '_public_key');
+}
+
+/**
+ * Returns Stripe Checkout settings.
+ */
+function stripe_checkout_settings() {
+  $config = config('stripe.settings');
+
+  // Assemble checkout settings.
+  return array(
+    'name' => $config->get('name'),
+    'currency' => $config->get('currency'),
+    'locale' => $config->get('auto'),
+    'zip-code' => $config->get('zip_code'),
+    'billing-address' => $config->get('billing_address'),
+    'shipping-address' => $config->get('shipping_address'),
+    'allow-remember-me' => $config->get('allow_remember_me'),
+    'bitcoin' => $config->get('bitcoin'),
+    'alipay' => $config->get('alipay'),
+    'alipay-reusable' => $config->get('alipay_reusable'),
+  );
+}
+
+/**
+ * Attempts to format a Stripe charge amount in a format that makes sense for
+ * the currency. There's probably a better way to manage this, and it would be
+ * even better if the Stripe PHP API offered a way to do this.
+ *
+ * @see https://github.com/stripe/stripe-php/issues/286
+ * @see https://support.stripe.com/questions/which-currencies-does-stripe-support
+ */
+function stripe_format_amount($amount, $currency) {
+  $currency = strtoupper($currency);
+
+  switch ($currency) {
+    // US dollar.
+    case 'USD':
+      return '$' . number_format($amount / 100, 2) . ' ' . $currency;
+
+    // Zero-decimal currencies.
+    // https://support.stripe.com/questions/which-zero-decimal-currencies-does-stripe-support
+    case 'BIF':
+    case 'CLP':
+    case 'DJF':
+    case 'GNF':
+    case 'JPY':
+    case 'KMF':
+    case 'KRW':
+    case 'MGA':
+    case 'PYG':
+    case 'RWF':
+    case 'VND':
+    case 'VUV':
+    case 'XAF':
+    case 'XOF':
+    case 'XPF':
+      return $amount . ' ' . $currency;
+
+    // Other currencies which use decimals. This needs work.
+    default:
+      return number_format($amount / 100, 2) . ' ' . $currency;
+  }
+}
