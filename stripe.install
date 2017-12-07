@@ -54,3 +54,64 @@ function stripe_install() {
   // Uninstall the stripe_api module.
   db_query("DELETE from {system} WHERE type = 'module' AND name = 'stripe_api'");
 }
+
+/**
+ * Implements hook_requirements().
+ */
+function stripe_requirements($phase) {
+  $requirements = array();
+
+  if ($phase == 'runtime') {
+    $t = get_t();
+
+    // Check for the Stripe PHP library.
+    $stripe = stripe_load_library();
+    if ($stripe['included']) {
+      $requirements['stripe_library'] = array(
+        'title' => $t('Stripe PHP library'),
+        'value' => $t('Using included Stripe PHP library'),
+        'severity' => REQUIREMENT_OK,
+      );
+
+      // Check for Stripe keys.
+      if (stripe_get_public_key() != '' && stripe_get_secret_key() != '') {
+        $api_keys_configured = TRUE;
+      }
+    }
+    elseif ($stripe['loaded']) {
+      $requirements['stripe_library'] = array(
+        'title' => $t('Stripe PHP library'),
+        'value' => $t('Possible conflict'),
+        'severity' => REQUIREMENT_WARNING,
+        'description' => $t('Duplicate Stripe API libraries found. It\'s recommended that you disable/uninstall any modules other than the offical Stripe module.', array(
+        )),
+      );
+
+      // Check for Stripe keys.
+      if (variable_get('stripe_test_secret_key', '') && variable_get('stripe_test_publishable_key', '') && variable_get('stripe_live_secret_key', '') && variable_get('stripe_live_publishable_key', '')) {
+        $api_keys_configured = TRUE;
+      }
+    }
+
+
+    if ($api_keys_configured) {
+      $requirements['stripe_keys'] = array(
+        'title' => $t('Stripe API keys'),
+        'value' => $t('API Keys Properly Configured'),
+        'severity' => REQUIREMENT_OK,
+      );
+    }
+    else {
+      $requirements['stripe_keys'] = array(
+        'title' => $t('Stripe API keys'),
+        'value' => $t('Not configured'),
+        'severity' => REQUIREMENT_ERROR,
+        'description' => $t('Stripe API keys are not configured. <a href="!url">Configure them here</a>.', array(
+          '!url' => url('admin/config/services/webform-stripe'),
+        )),
+      );
+    }
+  }
+
+  return $requirements;
+}

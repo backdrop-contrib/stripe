@@ -295,6 +295,176 @@ class AccountTest extends TestCase
 
         $account->legal_entity->additional_owners[1] = array('first_name' => 'Jane');
         $account->save();
+        $this->assertSame(2, count($account->legal_entity->additional_owners));
         $this->assertSame('Jane', $account->legal_entity->additional_owners[1]->first_name);
+    }
+
+    public function testLoginLinkCreation()
+    {
+        $accountId = 'acct_EXPRESS';
+        $mockExpress = array(
+            'id' => $accountId,
+            'object' => 'account',
+            'login_links' => array(
+                'object' => 'list',
+                'data' => array(),
+                'has_more' => false,
+                'url' =>  "/v1/accounts/$accountId/login_links"
+            )
+        );
+
+        $this->mockRequest('GET', "/v1/accounts/$accountId", array(), $mockExpress);
+
+        $mockLoginLink = array(
+            'object' => 'login_link',
+            'created' => 1493820886,
+            'url' => "https://connect.stripe.com/$accountId/AAAAAAAA"
+        );
+
+        $this->mockRequest('POST', "/v1/accounts/$accountId/login_links", array(), $mockLoginLink);
+
+        $account = Account::retrieve($accountId);
+        $loginLink = $account->login_links->create();
+        $this->assertSame('login_link', $loginLink->object);
+        $this->assertSame('Stripe\LoginLink', get_class($loginLink));
+    }
+
+    public function testDeauthorize()
+    {
+        Stripe::setClientId('ca_test');
+
+        $accountId = 'acct_test_deauth';
+        $mockAccount = array(
+            'id' => $accountId,
+            'object' => 'account',
+        );
+
+        $this->mockRequest('GET', "/v1/accounts/$accountId", array(), $mockAccount);
+
+        $this->mockRequest(
+            'POST',
+            '/oauth/deauthorize',
+            array(
+                'client_id' => 'ca_test',
+                'stripe_user_id' => $accountId,
+            ),
+            array(
+                'stripe_user_id' => $accountId,
+            ),
+            200,
+            Stripe::$connectBase
+        );
+
+        $account = Account::retrieve($accountId);
+        $account->deauthorize();
+
+        Stripe::setClientId(null);
+    }
+
+    public function testStaticCreateExternalAccount()
+    {
+        $this->mockRequest(
+            'POST',
+            '/v1/accounts/acct_123/external_accounts',
+            array('source' => 'btok_123'),
+            array('id' => 'ba_123', 'object' => 'bank_account')
+        );
+
+        $externalAccount = Account::createExternalAccount(
+            'acct_123',
+            array('source' => 'btok_123')
+        );
+
+        $this->assertSame('ba_123', $externalAccount->id);
+        $this->assertSame('bank_account', $externalAccount->object);
+    }
+
+    public function testStaticRetrieveExternalAccount()
+    {
+        $this->mockRequest(
+            'GET',
+            '/v1/accounts/acct_123/external_accounts/ba_123',
+            array(),
+            array('id' => 'ba_123', 'object' => 'bank_account')
+        );
+
+        $externalAccount = Account::retrieveExternalAccount(
+            'acct_123',
+            'ba_123'
+        );
+
+        $this->assertSame('ba_123', $externalAccount->id);
+        $this->assertSame('bank_account', $externalAccount->object);
+    }
+
+    public function testStaticUpdateExternalAccount()
+    {
+        $this->mockRequest(
+            'POST',
+            '/v1/accounts/acct_123/external_accounts/ba_123',
+            array('metadata' => array('foo' => 'bar')),
+            array('id' => 'ba_123', 'object' => 'bank_account')
+        );
+
+        $externalAccount = Account::updateExternalAccount(
+            'acct_123',
+            'ba_123',
+            array('metadata' => array('foo' => 'bar'))
+        );
+
+        $this->assertSame('ba_123', $externalAccount->id);
+        $this->assertSame('bank_account', $externalAccount->object);
+    }
+
+    public function testStaticDeleteExternalAccount()
+    {
+        $this->mockRequest(
+            'DELETE',
+            '/v1/accounts/acct_123/external_accounts/ba_123',
+            array(),
+            array('id' => 'ba_123', 'deleted' => true)
+        );
+
+        $externalAccount = Account::deleteExternalAccount(
+            'acct_123',
+            'ba_123'
+        );
+
+        $this->assertSame('ba_123', $externalAccount->id);
+        $this->assertSame(true, $externalAccount->deleted);
+    }
+
+    public function testStaticAllExternalAccounts()
+    {
+        $this->mockRequest(
+            'GET',
+            '/v1/accounts/acct_123/external_accounts',
+            array(),
+            array('object' => 'list', 'data' => array())
+        );
+
+        $externalAccounts = Account::allExternalAccounts(
+            'acct_123'
+        );
+
+        $this->assertSame('list', $externalAccounts->object);
+        $this->assertEmpty($externalAccounts->data);
+    }
+
+    public function testStaticCreateLoginLink()
+    {
+        $this->mockRequest(
+            'POST',
+            '/v1/accounts/acct_123/login_links',
+            array(),
+            array('object' => 'login_link', 'url' => 'https://example.com')
+        );
+
+        $loginLink = Account::createLoginLink(
+            'acct_123'
+        );
+
+        $this->assertSame('login_link', $loginLink->object);
+        $this->assertSame('https://example.com', $loginLink->url);
     }
 }

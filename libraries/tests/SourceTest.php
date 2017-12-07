@@ -74,6 +74,148 @@ class SourceTest extends TestCase
         $this->assertSame($source->metadata['foo'], 'bar');
     }
 
+    public function testSaveOwner()
+    {
+        $response = array(
+            'id' => 'src_foo',
+            'object' => 'source',
+            'owner' => array(
+                'name' => null,
+                'address' => null,
+            ),
+        );
+        $this->mockRequest(
+            'GET',
+            '/v1/sources/src_foo',
+            array(),
+            $response
+        );
+
+        $response['owner'] = array(
+            'name' => "Stripey McStripe",
+            'address' => array(
+                'line1' => "Test Address",
+                'city' => "Test City",
+                'postal_code' => "12345",
+                'state' => "Test State",
+                'country' => "Test Country",
+            )
+        );
+        $this->mockRequest(
+            'POST',
+            '/v1/sources/src_foo',
+            array(
+                'owner' => array(
+                    'name' => "Stripey McStripe",
+                    'address' => array(
+                        'line1' => "Test Address",
+                        'city' => "Test City",
+                        'postal_code' => "12345",
+                        'state' => "Test State",
+                        'country' => "Test Country",
+                    ),
+                ),
+            ),
+            $response
+        );
+
+        $source = Source::retrieve('src_foo');
+        $source->owner['name'] = "Stripey McStripe";
+        $source->owner['address'] = array(
+            'line1' => "Test Address",
+            'city' => "Test City",
+            'postal_code' => "12345",
+            'state' => "Test State",
+            'country' => "Test Country",
+        );
+        $source->save();
+        $this->assertSame($source->owner['name'], "Stripey McStripe");
+        $this->assertSame($source->owner['address']['line1'], "Test Address");
+        $this->assertSame($source->owner['address']['city'], "Test City");
+        $this->assertSame($source->owner['address']['postal_code'], "12345");
+        $this->assertSame($source->owner['address']['state'], "Test State");
+        $this->assertSame($source->owner['address']['country'], "Test Country");
+    }
+
+
+    public function testSaveCardExpiryDate()
+    {
+        $response = array(
+            'id' => 'src_foo',
+            'object' => 'source',
+            'card' => array(
+                'exp_month' => 8,
+                'exp_year' => 2019,
+            ),
+        );
+        $source = Source::constructFrom(
+            $response,
+            new Util\RequestOptions()
+        );
+
+        $response['card']['exp_month'] = 12;
+        $response['card']['exp_year'] = 2022;
+        $this->mockRequest(
+            'POST',
+            '/v1/sources/src_foo',
+            array(
+                'card' => array(
+                    'exp_month' => 12,
+                    'exp_year' => 2022,
+                )
+            ),
+            $response
+        );
+
+        $source->card->exp_month = 12;
+        $source->card->exp_year = 2022;
+        $source->save();
+
+        $this->assertSame(12, $source->card->exp_month);
+        $this->assertSame(2022, $source->card->exp_year);
+    }
+
+    public function testDetachAttached()
+    {
+        $response = array(
+            'id' => 'src_foo',
+            'object' => 'source',
+            'customer' => 'cus_bar',
+        );
+        $source = Source::constructFrom(
+            $response,
+            new Util\RequestOptions()
+        );
+
+        unset($response['customer']);
+        $this->mockRequest(
+            'DELETE',
+            '/v1/customers/cus_bar/sources/src_foo',
+            array(),
+            $response
+        );
+
+        $source->detach();
+        $this->assertFalse(array_key_exists('customer', $source));
+    }
+
+    /**
+     * @expectedException Stripe\Error\Api
+     */
+    public function testDetachUnattached()
+    {
+        $response = array(
+            'id' => 'src_foo',
+            'object' => 'source',
+        );
+        $source = Source::constructFrom(
+            $response,
+            new Util\RequestOptions()
+        );
+
+        $source->detach();
+    }
+
     public function testVerify()
     {
         $response = array(
