@@ -492,14 +492,17 @@ function _stripe_form_webform_component_edit_form_alter(&$form, &$form_state) {
 
     // Set plan options and update description.
     $plan_options = array();
-    foreach (_stripe_get_plans($test_mode) as $plan) {
-      $plan_options[$plan['id']] = t('@name (@id)', array(
-        '@name' => $plan['name'],
-        '@id' => $plan['id'],
-      ));
+    $current_plans = _stripe_get_plans($test_mode);
+    if (is_array($current_plans) && !empty($current_plans)) {
+      foreach (_stripe_get_plans($test_mode) as $plan) {
+        $plan_options[$plan['id']] = t('@name (@id)', array(
+          '@name' => $plan['name'],
+          '@id' => $plan['id'],
+        ));
+      }
+      $form['amount']['amount_plan']['#options'] = $plan_options;
+      $form['amount']['amount_plan']['#description'] .= ' ' . $plan_message;
     }
-    $form['amount']['amount_plan']['#options'] = $plan_options;
-    $form['amount']['amount_plan']['#description'] .= ' ' . $plan_message;
 
     // Add ajax handler to plan component field.
     $form['amount']['amount_plan_component']['#ajax'] = array(
