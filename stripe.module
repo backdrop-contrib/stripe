@@ -29,6 +29,10 @@ function stripe_config_info() {
     'label' => t('Stripe API settings'),
     'group' => t('Configuration'),
   );
+  $prefixes['stripe_secret.settings'] = array(
+    'label' => t('Stripe Secret Keys'),
+    'group' => t('Configuration'),
+  );
   return $prefixes;
 }
 
