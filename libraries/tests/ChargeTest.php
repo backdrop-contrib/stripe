@@ -15,17 +15,11 @@ class ChargeTest extends TestCase
     {
         self::authorizeFromEnv();
 
-        $card = array(
-            'number' => '4242424242424242',
-            'exp_month' => 5,
-            'exp_year' => date('Y') + 1
-        );
-
         $c = Charge::create(
             array(
                 'amount' => 100,
                 'currency' => 'usd',
-                'card' => $card
+                'card' => 'tok_visa'
             )
         );
         $this->assertTrue($c->paid);
@@ -36,17 +30,11 @@ class ChargeTest extends TestCase
     {
         self::authorizeFromEnv();
 
-        $card = array(
-            'number' => '4242424242424242',
-            'exp_month' => 5,
-            'exp_year' => date('Y') + 1
-        );
-
         $c = Charge::create(
             array(
                 'amount' => 100,
                 'currency' => 'usd',
-                'card' => $card
+                'card' => 'tok_visa'
             ),
             array(
                 'idempotency_key' => self::generateRandomString(),
@@ -61,17 +49,11 @@ class ChargeTest extends TestCase
     {
         self::authorizeFromEnv();
 
-        $card = array(
-            'number' => '4242424242424242',
-            'exp_month' => 5,
-            'exp_year' => date('Y') + 1
-        );
-
         $c = Charge::create(
             array(
                 'amount' => 100,
                 'currency' => 'usd',
-                'card' => $card
+                'card' => 'tok_visa'
             )
         );
         $d = Charge::retrieve($c->id);
@@ -83,17 +65,11 @@ class ChargeTest extends TestCase
     {
         self::authorizeFromEnv();
 
-        $card = array(
-            'number' => '4242424242424242',
-            'exp_month' => 5,
-            'exp_year' => date('Y') + 1
-        );
-
         $charge = Charge::create(
             array(
                 'amount' => 100,
                 'currency' => 'usd',
-                'card' => $card
+                'card' => 'tok_visa'
             )
         );
 
@@ -108,17 +84,11 @@ class ChargeTest extends TestCase
     {
         self::authorizeFromEnv();
 
-        $card = array(
-            'number' => '4242424242424242',
-            'exp_month' => 5,
-            'exp_year' => date('Y') + 1
-        );
-
         $charge = Charge::create(
             array(
                 'amount' => 100,
                 'currency' => 'usd',
-                'card' => $card
+                'card' => 'tok_visa'
             )
         );
 
@@ -134,17 +104,11 @@ class ChargeTest extends TestCase
     {
         self::authorizeFromEnv();
 
-        $card = array(
-            'number' => '4242424242424242',
-            'exp_month' => 5,
-            'exp_year' => date('Y') + 1
-        );
-
         $charge = Charge::create(
             array(
                 'amount' => 100,
                 'currency' => 'usd',
-                'card' => $card
+                'card' => 'tok_visa'
             )
         );
 
@@ -158,41 +122,15 @@ class ChargeTest extends TestCase
         );
     }
 
-    public function testCreateWithBitcoinReceiverSource()
-    {
-        self::authorizeFromEnv();
-
-        $receiver = $this->createTestBitcoinReceiver("do+fill_now@stripe.com");
-
-        $charge = Charge::create(
-            array(
-                'amount' => 100,
-                'currency' => 'usd',
-                'source' => $receiver->id
-            )
-        );
-
-        $this->assertSame($receiver->id, $charge->source->id);
-        $this->assertSame("bitcoin_receiver", $charge->source->object);
-        $this->assertSame("succeeded", $charge->status);
-        $this->assertInstanceOf('Stripe\\BitcoinReceiver', $charge->source);
-    }
-
     public function markAsSafe()
     {
         self::authorizeFromEnv();
 
-        $card = array(
-            'number' => '4242424242424242',
-            'exp_month' => 5,
-            'exp_year' => date('Y') + 1
-        );
-
         $charge = Charge::create(
             array(
                 'amount' => 100,
                 'currency' => 'usd',
-                'card' => $card
+                'card' => 'tok_visa'
             )
         );
 
