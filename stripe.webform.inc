@@ -1100,7 +1100,6 @@ function _stripe_process_token(&$form, &$form_state) {
 
   // Process settings.
   $settings = stripe_process_checkout_settings($component, $form_state['values']['submitted'], STRIPE_SETTINGS_PROCESS);
-  dpm($settings);
 
   // Parse Stripe token and email.
   list($token, $email) = explode(':', $value);
@@ -1246,6 +1245,8 @@ function _stripe_get_plans($test_mode) {
 
     // Load list of Stripe plans.
     if (!empty($secret_key)) {
+      // Include Stripe library.
+      stripe_load_library();
       \Stripe\Stripe::setApiKey($secret_key);
       try {
         foreach (\Stripe\Plan::all()->data as $plan) {
