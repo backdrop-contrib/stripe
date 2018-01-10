@@ -1109,6 +1109,9 @@ function _webform_stripe_process_checkout_settings($component, $data, $state) {
       break;
   }
 
+  // Just in case amount is not an integer, round it.
+  $settings['amount'] = round($settings['amount']);
+
   // Allow modules to alter Stripe Checkout settings, keying data by form key
   // to assist hook implementations.
   $form = array();
