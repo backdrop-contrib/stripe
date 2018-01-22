@@ -41,11 +41,18 @@ function _webform_defaults_webform_stripe() {
 
 /**
  * Gets Stripe plans.
+ *
+ * @param bool $test_mode
+ *   TRUE to get test plans, FALSE to get live plans.
+ *
+ * @return array
+ *   An array of Stripe subscription plans.
  */
 function _webform_stripe_get_plans($test_mode) {
   $plans = &drupal_static('webform_stripe_plans');
 
   if (!isset($plans)) {
+    $plans = array();
     $secret_key = $test_mode ? variable_get('webform_stripe_test_secret_key', '') : variable_get('webform_stripe_live_secret_key', '');
 
     // Load list of Stripe plans.
