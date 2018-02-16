@@ -1214,7 +1214,6 @@ function _webform_stripe_process_dynamic_value($type, $component, $data) {
 function _webform_stripe_process_token(&$form, &$form_state) {
   $component = $form['#webform_stripe'];
   $value = $form_state['values']['submitted'][$component['cid']];
-  $sid = $form_state['values']['details']['sid'];
 
   // Nothing to process if we don't have a Stripe token.
   if (substr($value, 0, 4) !== 'tok_') {
@@ -1261,9 +1260,6 @@ function _webform_stripe_process_token(&$form, &$form_state) {
         'description' => !empty($settings['description']) ? $settings['description'] : '',
         'currency' => $settings['currency'],
         'receipt_email' => $email,
-        'metadata' => array(
-          'submission_url' => url("node/{$component['nid']}/submission/$sid", array('absolute' => TRUE)),
-        ),
       ));
       $value = array(
         'test' => $component['extra']['test_mode'],
@@ -1278,6 +1274,17 @@ function _webform_stripe_process_token(&$form, &$form_state) {
 
     // Charge was successful, so continue with saving the submission.
     webform_client_form_submit($form, $form_state);
+
+    // Now that the submission has been saved, we have a submission ID and can
+    // update the Subscription's or Charge's metadata with a link to the
+    // submission.
+    $metadata['submission_url'] = url("node/{$component['nid']}/submission/{$form_state['values']['details']['sid']}", array('absolute' => TRUE));
+    if (isset($subscription)) {
+      \Stripe\Subscription::update($subscription->id, array('metadata' => $metadata));
+    }
+    else if (isset($charge)) {
+      \Stripe\Charge::update($charge->id, array('metadata' => $metadata));
+    }
   }
 
   // Transaction failed.
