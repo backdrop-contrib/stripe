@@ -918,7 +918,7 @@ function _webform_stripe_form_webform_client_form_alter(&$form, &$form_state) {
             $form['actions']['submit']['#value'] = WEBFORM_STRIPE_PAY_TEXT;
           }
           $form['actions']['submit']['#ajax'] = array(
-            'path' => "webform-stripe-ajax/$cid",
+            'callback' => '_webform_stripe_form_webform_client_form_ajax_callback',
             'wrapper' => $form['#webform_stripe_html_id'],
           );
         }
@@ -930,7 +930,7 @@ function _webform_stripe_form_webform_client_form_alter(&$form, &$form_state) {
             '#value' => t('Save and Pay'),
             '#weight' => 15,
             '#ajax' => array(
-              'path' => "webform-stripe-ajax/$cid",
+              'callback' => '_webform_stripe_form_webform_client_form_ajax_callback',
               'wrapper' => $form['#webform_stripe_html_id'],
             ),
           );
@@ -946,46 +946,41 @@ function _webform_stripe_form_webform_client_form_alter(&$form, &$form_state) {
 /**
  * Webform ajax callback.
  */
-function _webform_stripe_form_webform_client_form_ajax_callback() {
-  // Get component ID, or return not found.
-  $args = func_get_args();
-  $cid = reset($args);
-  if (empty($cid)) {
-    return MENU_NOT_FOUND;
-  }
-
-  // Get the form, build it, and validate it. See ajax_form_callback() and
-  // drupal_process_form().
-  list($form, $form_state, $form_id, $form_build_id, $commands) = ajax_get_form();
-  $form_state['values'] = array();
-  $form = form_builder($form['#form_id'], $form, $form_state);
+function _webform_stripe_form_webform_client_form_ajax_callback($form, $form_state) {
+  // Validate form.
   drupal_validate_form($form['#form_id'], $form, $form_state);
 
-  // If form had any validation errors, return it and display the messages.
+  // Form has errors; show errors and scroll to top of form.
   if (form_get_errors()) {
     $commands = ajax_prepare_response($form);
     $commands[] = array(
       'command' => 'webformStripeScroll',
       'selector' => '#' . $form['#webform_stripe_html_id'],
     );
-    return array(
+    $commands[] = array(
       '#type' => 'ajax',
-      '#commands' => $commands,
+      '#commands' => array(
+        array(
+          'command' => 'webformStripeScroll',
+          'selector' => '#' . $form['#webform_stripe_html_id'],
+        ),
+        ajax_command_alert('error'),
+      ),
     );
   }
 
-  // Stripe Payment component.
-  $component = $form['#node']->webform['components'][$cid];
+  // No errors; open Stripe Checkout.
+  else {
+    $commands[] = array(
+      'command' => 'webformStripeCheckout',
+      'params' => _webform_stripe_process_checkout_settings($form['#webform_stripe'], $form_state['values']['submitted'], WEBFORM_STRIPE_SETTINGS_CHECKOUT),
+    );
+  }
 
-  // Open Stripe Checkout.
+  // Return ajax response.
   return array(
     '#type' => 'ajax',
-    '#commands' => array(
-      array(
-        'command' => 'webformStripeCheckout',
-        'params' => _webform_stripe_process_checkout_settings($component, $form_state['values']['submitted'], WEBFORM_STRIPE_SETTINGS_CHECKOUT),
-      ),
-    ),
+    '#commands' => $commands,
   );
 }
 
