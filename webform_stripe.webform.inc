@@ -62,7 +62,12 @@ function _webform_stripe_get_plans($test_mode) {
         foreach (\Stripe\Plan::all()->data as $plan) {
           $plans[$plan->id] = array(
             'id' => $plan->id,
-            'name' => $plan->name,
+            // As of 2/5/2018, 'name' was replaced with 'nickname'.
+            // https://stripe.com/docs/upgrades#2018-02-05
+            // https://stripe.com/docs/billing/migrating#new-plan-fields
+            'nickname' => isset($plan->nickname) ? $plan->nickname : (
+              isset($plan->name) ? $plan->name : ''
+            ),
             'amount' => $plan->amount,
           );
         }
@@ -581,8 +586,8 @@ function _webform_stripe_form_webform_component_edit_form_alter(&$form, &$form_s
     // Set plan options and update description.
     $plan_options = array();
     foreach (_webform_stripe_get_plans($test_mode) as $plan) {
-      $plan_options[$plan['id']] = t('@name (@id)', array(
-        '@name' => $plan['name'],
+      $plan_options[$plan['id']] = format_string('@nickname (@id)', array(
+        '@nickname' => $plan['nickname'],
         '@id' => $plan['id'],
       ));
     }
@@ -1063,7 +1068,7 @@ function _webform_stripe_process_checkout_settings($component, $data, $state) {
     case 'plan':
       $plans = _webform_stripe_get_plans($component['extra']['test_mode']);
       if (!empty($settings['plan']) && array_key_exists($settings['plan'], $plans)) {
-        $settings['description'] = $plans[$settings['plan']]['name'];
+        $settings['description'] = $plans[$settings['plan']]['nickname'];
       }
       break;
   }
