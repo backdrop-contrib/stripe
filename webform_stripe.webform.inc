@@ -1237,11 +1237,16 @@ function _webform_stripe_process_token(&$form, &$form_state) {
     if (!empty($settings['plan'])) {
       $customer = \Stripe\Customer::create(array(
         'email' => $email,
-      ));
-      $subscription = $customer->subscriptions->create(array(
         'source' => $token,
-        'plan' => $settings['plan'],
-        'quantity' => $settings['plan_quantity'],
+      ));
+      $subscription = \Stripe\Subscription::create(array(
+        'customer' => $customer->id,
+        'items' => array(
+          array(
+            'plan' => $settings['plan'],
+            'quantity' => $settings['plan_quantity'],
+          ),
+        ),
       ));
       $value = array(
         'test' => $component['extra']['test_mode'],
