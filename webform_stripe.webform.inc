@@ -32,6 +32,7 @@ function _webform_defaults_webform_stripe() {
       'panel_label' => t('Pay {{amount}}'),
       'email_type' => 'user',
       'email_component' => '',
+      'email_receipt' => TRUE,
       'image_type' => 'default',
       'image_file' => '',
       'image_url' => '',
@@ -109,7 +110,7 @@ function _webform_edit_webform_stripe($component) {
     '#type' => 'checkbox',
     '#title' => t('Test mode'),
     '#description' => t('When enabled, the test API keys are used and the payment will not actually be charged. You can use <a href="!url">these test credit cards</a>.', array(
-      '!url' => url('https://stripe.com/docs/testing#cards'),
+      '!url' => 'https://stripe.com/docs/testing#cards',
     )),
     '#default_value' => $component['extra']['test_mode'],
     '#parents' => array('extra', 'test_mode'),
@@ -459,6 +460,17 @@ function _webform_edit_webform_stripe($component) {
         ':input[name="extra[email_type]"]' => array('value' => 'component'),
       ),
     ),
+  );
+
+  // Email receipt.
+  $form['email']['email_receipt'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Send email receipt'),
+    '#description' => t('When enabled, Stripe will send an email receipt for the transaction, regardless of your <a href="!url">email receipts settings</a>. Note that no emails are sent for test mode charges.', array(
+      '!url' => 'https://dashboard.stripe.com/account/emails',
+    )),
+    '#default_value' => $component['extra']['email_receipt'],
+    '#parents' => array('extra', 'email_receipt'),
   );
 
   // Image type.
@@ -1086,6 +1098,10 @@ function _webform_stripe_process_checkout_settings($component, $data, $state) {
       break;
   }
 
+  // Determine whether or not to send an email receipt via Stripe. For backward
+  // compatability, if this component setting is not set, enable this feature.
+  $settings['email_receipt'] = !isset($component['extra']['email_receipt']) || !empty($component['extra']['email_receipt']);
+
   // Merge image default settings.
   if ($component['extra']['image_type'] === 'default') {
     $component['extra']['image_type'] = variable_get('webform_stripe_default_image_type', 'none');
@@ -1264,7 +1280,7 @@ function _webform_stripe_process_token(&$form, &$form_state) {
         'amount' => $settings['amount'],
         'description' => !empty($settings['description']) ? $settings['description'] : '',
         'currency' => $settings['currency'],
-        'receipt_email' => $email,
+        'receipt_email' => $settings['email_receipt'] ? $email : NULL,
       ));
       $value = array(
         'test' => $component['extra']['test_mode'],
