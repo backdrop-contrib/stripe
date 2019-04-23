@@ -1282,13 +1282,18 @@ function _webform_stripe_process_token(&$form, &$form_state) {
 
     // Now that the submission has been saved, we have a submission ID and can
     // update the Subscription's or Charge's metadata with a link to the
-    // submission.
-    $metadata['submission_url'] = url("node/{$component['nid']}/submission/{$form_state['values']['details']['sid']}", array('absolute' => TRUE));
+    // submission, in addition to any custom metadata set in
+    // hook_webform_stripe_checkout_settings_alter().
+    $settings['metadata']['submission_url'] = url("node/{$component['nid']}/submission/{$form_state['values']['details']['sid']}", array('absolute' => TRUE));
     if (isset($subscription)) {
-      \Stripe\Subscription::update($subscription->id, array('metadata' => $metadata));
+      \Stripe\Subscription::update($subscription->id, array(
+        'metadata' => $settings['metadata'],
+      ));
     }
     else if (isset($charge)) {
-      \Stripe\Charge::update($charge->id, array('metadata' => $metadata));
+      \Stripe\Charge::update($charge->id, array(
+        'metadata' => $settings['metadata'],
+      ));
     }
   }
 
