@@ -107,7 +107,7 @@ function stripe_requirements($phase) {
         'value' => $t('Not configured'),
         'severity' => REQUIREMENT_ERROR,
         'description' => $t('Stripe API keys are not configured. <a href="!url">Configure them here</a>.', array(
-          '!url' => url('admin/config/services/webform-stripe'),
+          '!url' => url('admin/config/services/stripe'),
         )),
       );
     }
