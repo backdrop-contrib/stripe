@@ -5,9 +5,12 @@ module is designed to be required by other contrib/custom modules.
 
 ## Dependencies
 
-- [Libraries](https://github.com/backdrop-contrib/libraries)
-- [Stripe's PHP bindings](https://github.com/stripe/stripe-php) should be
-  copied into the `/libraries` directory in a folder named `stripe`.
+- None [Stripe's PHP bindings](https://github.com/stripe/stripe-php) have been
+  packaged and incuded in this moduile
+
+## Features
+
+- Features from the webform_stripe module are included in the 2.x version.
 
 ## Installation
 
