@@ -1,0 +1,291 @@
+<?php
+
+/**
+ * Implements hook_requirements().
+ */
+function webform_stripe_requirements($phase) {
+  $requirements = array();
+
+  if ($phase == 'runtime') {
+    $t = get_t();
+
+    // Check for the Stripe PHP library.
+    $stripe = webform_stripe_load_library();
+    if ($stripe['loaded']) {
+      $requirements['webform_stripe_library'] = array(
+        'title' => $t('Webform Stripe PHP library'),
+        'value' => $t('Installed'),
+        'severity' => REQUIREMENT_OK,
+      );
+    }
+    else {
+      $requirements['webform_stripe_library'] = array(
+        'title' => $t('Webform Stripe PHP library'),
+        'value' => $t('Missing!'),
+        'severity' => REQUIREMENT_ERROR,
+        'description' => $t('Stripe library missing. Download the Stripe library from <a href="!url">!url</a> and place it at %path.', array(
+          '!url' => 'https://github.com/stripe/stripe-php',
+          '%path' => 'sites/all/libraries/stripe-php',
+        )),
+      );
+    }
+
+    // Check for Stripe keys.
+    if (variable_get('webform_stripe_test_secret_key', '') && variable_get('webform_stripe_test_publishable_key', '') && variable_get('webform_stripe_live_secret_key', '') && variable_get('webform_stripe_live_publishable_key', '')) {
+      $requirements['webform_stripe_keys'] = array(
+        'title' => $t('Webform Stripe API keys'),
+        'value' => $t('Configured'),
+        'severity' => REQUIREMENT_OK,
+      );
+    }
+    else {
+      $requirements['webform_stripe_keys'] = array(
+        'title' => $t('Webform Stripe API keys'),
+        'value' => $t('Not configured'),
+        'severity' => REQUIREMENT_ERROR,
+        'description' => $t('Stripe API keys are not configured. <a href="!url">Configure them here</a>.', array(
+          '!url' => url('admin/config/services/webform-stripe'),
+        )),
+      );
+    }
+  }
+
+  return $requirements;
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function webform_stripe_uninstall() {
+  // Delete variables.
+  variable_del('webform_stripe_test_secret_key');
+  variable_del('webform_stripe_test_publishable_key');
+  variable_del('webform_stripe_live_secret_key');
+  variable_del('webform_stripe_live_publishable_key');
+  variable_del('webform_stripe_default_image_type');
+  variable_del('webform_stripe_default_image_file');
+  variable_del('webform_stripe_default_image_url');
+  variable_del('webform_stripe_checkout_settings');
+
+  // Delete Stripe Payment components and their data from webforms.
+  $components = db_query("SELECT nid, cid FROM {webform_component} WHERE type = 'webform_stripe'")->fetchAll();
+  db_query("DELETE FROM {webform_component} WHERE type = 'webform_stripe'");
+  foreach ($components as $component) {
+    db_query("DELETE FROM {webform_submitted_data} WHERE nid = :nid AND cid = :cid", array(
+      ':nid' => $component->nid,
+      ':cid' => $component->cid,
+    ));
+  }
+}
+
+/**
+ * Grant "administer webform stripe" permission to appropriate users.
+ */
+function webform_stripe_update_7000() {
+  $roles = user_roles(TRUE, 'administer site configuration');
+  foreach ($roles as $rid => $role) {
+    user_role_grant_permissions($rid, array('administer webform stripe'));
+  }
+
+  if (!empty($roles)) {
+    return t('"Administer Webform Stripe settings" permission was granted to: @roles.', array(
+      '@roles' => check_plain(implode(', ', $roles)),
+    ));
+  }
+}
+
+/**
+ * Sets amount multiplier to 0 for existing Stripe components.
+ */
+function webform_stripe_update_7001() {
+  $components = db_query("SELECT * FROM {webform_component} WHERE type = 'webform_stripe'")->fetchAll();
+  foreach ($components as $component) {
+    $extra = unserialize($component->extra);
+    $extra['amount_multiplier'] = 0;
+    db_query("UPDATE {webform_component} SET extra = :extra WHERE nid = :nid AND cid = :cid", array(
+      ':extra' => serialize($extra),
+      ':nid' => $component->nid,
+      ':cid' => $component->cid,
+    ));
+  }
+}
+
+/**
+ * Converts API keys to separate live and test keys.
+ */
+function webform_stripe_update_7002() {
+  variable_set('webform_stripe_live_secret_key', variable_get('webform_stripe_secret_key', ''));
+  variable_set('webform_stripe_live_publishable_key', variable_get('webform_stripe_publishable_key', ''));
+  variable_set('webform_stripe_test_secret_key', variable_get('webform_stripe_secret_key', ''));
+  variable_set('webform_stripe_test_publishable_key', variable_get('webform_stripe_publishable_key', ''));
+  variable_del('webform_stripe_secret_key');
+  variable_del('webform_stripe_publishable_key');
+
+  return t('Each webform can now use either test or live API keys, so the existing API keys were converted to live keys. You should <a href="!url">set your test API keys</a>, and then configure each webform to use either test or live keys.', array(
+    '!url' => url('admin/config/services/webform-stripe'),
+  ));
+}
+
+/**
+ * Updates Stripe component settings and how charges are stored.
+ */
+function webform_stripe_update_7003() {
+  $components = db_query("SELECT * FROM {webform_component} WHERE type = 'webform_stripe'")->fetchAll();
+  foreach ($components as $component) {
+    // Convert old settings to new format.
+    $extra = unserialize($component->extra);
+    if (isset($extra['webform_stripe']['amount'])) {
+      $extra['amount_value'] = $extra['webform_stripe']['amount'];
+    }
+    if (isset($extra['webform_stripe']['description'])) {
+      $extra['description_value'] = $extra['webform_stripe']['description'];
+    }
+    if (isset($extra['webform_stripe']['panel-label'])) {
+      $extra['panel_label'] = $extra['webform_stripe']['panel-label'];
+    }
+    if (isset($extra['webform_stripe']['email'])) {
+      $extra['email_type'] = $extra['webform_stripe']['email'];
+    }
+    unset($extra['webform_stripe']);
+    if (isset($extra['amount_type']) && $extra['amount_type'] === 'component') {
+      $extra['amount_type'] = 'value_component';
+    }
+    if (isset($extra['amount_component'])) {
+      $extra['amount_value_component'] = $extra['amount_component'];
+    }
+    if (isset($extra['amount_mapping'])) {
+      $extra['amount_value_mapping'] = $extra['amount_mapping'];
+    }
+    if (isset($extra['amount_multiplier'])) {
+      $extra['amount_value_multiplier'] = $extra['amount_multiplier'];
+    }
+    unset($extra['amount_component'], $extra['amount_mapping'], $extra['amount_multiplier']);
+    if ($extra['description_type'] === 'component') {
+      $extra['description_type'] = 'value_component';
+    }
+    if (isset($extra['description_component'])) {
+      $extra['description_value_component'] = $extra['description_component'];
+    }
+    if (isset($extra['description_mapping'])) {
+      $extra['description_value_mapping'] = $extra['description_mapping'];
+    }
+    unset($extra['description_component'], $extra['description_mapping']);
+    db_query("UPDATE {webform_component} SET extra = :extra WHERE nid = :nid AND cid = :cid", array(
+      ':extra' => serialize($extra),
+      ':nid' => $component->nid,
+      ':cid' => $component->cid,
+    ));
+
+    // Update how charges are stored.
+    $submissions = db_query("SELECT * FROM {webform_submitted_data} WHERE nid = :nid AND cid = :cid", array(
+      ':nid' => $component->nid,
+      ':cid' => $component->cid,
+    ));
+    foreach ($submissions as $submission) {
+      if (substr($submission->data, 0, 3) === 'ch_') {
+        $submission->data = array(
+          'test' => isset($extra['test_mode']) ? $extra['test_mode'] : FALSE,
+          'charge' => $submission->data,
+        );
+        db_query("UPDATE {webform_submitted_data} SET data = :data WHERE nid = :nid AND sid = :sid AND cid = :cid", array(
+          ':data' => serialize($submission->data),
+          ':nid' => $submission->nid,
+          ':sid' => $submission->sid,
+          ':cid' => $submission->cid,
+        ));
+      }
+    }
+  }
+}
+
+/**
+ * Updates default image setting.
+ */
+function webform_stripe_update_7004() {
+  $settings = variable_get('webform_stripe_checkout_settings', array());
+  if (!empty($settings['image'])) {
+    variable_set('webform_stripe_default_image_type', 'url');
+    variable_set('webform_stripe_default_image_url', $settings['image']);
+  }
+  unset($settings['image']);
+  variable_set('webform_stripe_checkout_settings', $settings);
+}
+
+/**
+ * Retrieves amount values from Stripe for existing charges.
+ */
+function webform_stripe_update_7005() {
+  // Find all Stripe Payment submitted data.
+  $submitted_data = db_query("SELECT d.*
+    FROM {webform_component} c
+    INNER JOIN {webform_submitted_data} d ON d.nid = c.nid AND d.cid = c.cid
+    WHERE c.type = 'webform_stripe'")->fetchAll();
+
+  // If a Stripe Payment was found, check for dependencies.
+  if (!empty($submitted_data)) {
+    $library = webform_stripe_load_library();
+    if (!$library['loaded']) {
+      throw new DrupalUpdateException('The Stripe PHP API library is missing.');
+    }
+    if (!variable_get('webform_stripe_test_secret_key', '') || !variable_get('webform_stripe_live_secret_key', '')) {
+      throw new DrupalUpdateException('You need to configure your Stripe API secret keys.');
+    }
+  }
+
+  // For each submission, if it was a charge (not a subscription) and the
+  // amount is not set, then retrieve the amount and currency for that charge
+  // from Stripe.
+  foreach ($submitted_data as $data) {
+    $value = unserialize($data->data);
+    if (!empty($value['charge']) && !isset($value['amount'])) {
+      try {
+        \Stripe\Stripe::setApiKey(!empty($value['test']) ? variable_get('webform_stripe_test_secret_key', '') : variable_get('webform_stripe_live_secret_key', ''));
+        $charge = \Stripe\Charge::retrieve($value['charge']);
+        $value['amount'] = $charge->amount;
+        $value['currency'] = $charge->currency;
+        db_query("UPDATE {webform_submitted_data}
+          SET data = :data
+          WHERE nid = :nid AND sid = :sid AND cid = :cid AND no = :no", array(
+            ':data' => serialize($value),
+            ':nid' => $data->nid,
+            ':sid' => $data->sid,
+            ':cid' => $data->cid,
+            ':no' => $data->no,
+          ));
+      }
+      catch (Exception $e) {
+        // Don't do anything, just prevent the update script from dying.
+      }
+    }
+  }
+}
+
+/**
+ * Updates "submit text" option for webforms with a Stripe Payment component.
+ */
+function webform_stripe_update_7006() {
+  // Get Stripe Payment components and the corresponding Webform's submit text.
+  $components = db_query("SELECT c.*, w.submit_text
+    FROM {webform_component} c
+    INNER JOIN {webform} w ON w.nid = c.nid
+    WHERE c.type = 'webform_stripe'")->fetchAll();
+  foreach ($components as $component) {
+    $extra = unserialize($component->extra);
+
+    // If old Pay Text setting was set, update Webform submit text.
+    if (!empty($extra['pay_text'])) {
+      db_query("UPDATE {webform} SET submit_text = :submit_text WHERE nid = :nid", array(
+        ':submit_text' => $extra['pay_text'],
+        ':nid' => $component->nid,
+      ));
+    }
+
+    // Remove old settings.
+    unset($extra['continue_text'], $extra['pay_text'], $extra['cancel_text']);
+    db_query("UPDATE {webform_component} SET extra = :extra WHERE nid = :nid AND cid = :cid", array(
+      ':extra' => serialize($extra),
+      ':nid' => $component->nid,
+      ':cid' => $component->cid,
+    ));
+  }
+}

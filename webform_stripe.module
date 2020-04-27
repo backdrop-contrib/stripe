@@ -1,0 +1,208 @@
+<?php
+
+/**
+ * Default button texts.
+ */
+define('WEBFORM_STRIPE_PAY_TEXT', t('Pay with Credit Card'));
+
+/**
+ * States for hook_webform_stripe_checkout_settings_alter().
+ */
+define('WEBFORM_STRIPE_SETTINGS_CHECKOUT', 'checkout');
+define('WEBFORM_STRIPE_SETTINGS_PROCESS', 'process');
+
+/**
+ * Implements hook_permission().
+ */
+function webform_stripe_permission() {
+  return array(
+    'administer webform stripe' => array(
+      'title' => t('Administer Webform Stripe settings'),
+      'description' => t('Grants access to change global Stripe Checkout credentials and settings.'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function webform_stripe_menu() {
+  $items['admin/config/services/webform-stripe'] = array(
+    'title' => 'Webform Stripe',
+    'description' => 'Configure Stripe API for Webform.',
+    'access arguments' => array('administer webform stripe'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('webform_stripe_settings_form'),
+    'file' => 'webform_stripe.admin.inc',
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_webform_component_info().
+ */
+function webform_stripe_webform_component_info() {
+  $components['webform_stripe'] = array(
+    'label' => t('Stripe payment'),
+    'description' => t('Displays a payment button which opens the Stripe Checkout form.'),
+    'features' => array(
+      'analysis' => FALSE,
+      'conditional' => FALSE,
+      'default_value' => FALSE,
+      'email' => FALSE,
+      'description' => FALSE,
+      'required' => FALSE,
+      'private' => FALSE,
+      'title_display' => FALSE,
+      'css_classes' => FALSE,
+    ),
+    'file' => 'webform_stripe.webform.inc',
+  );
+  return $components;
+}
+
+/**
+ * Implements hook_libraries_info().
+ */
+function webform_stripe_libraries_info() {
+  return array(
+    'stripe-php' => array(
+      'name' => 'Stripe API Client Library for PHP',
+      'vendor url' => 'https://stripe.com',
+      'download url' => 'https://github.com/stripe/stripe-php',
+      'version arguments' => array(
+        'file' => 'VERSION',
+        'pattern' => '/(\d+\.\d+\.\d+)/',
+      ),
+      'files' => array(
+        'php' => array(
+          'init.php',
+        ),
+      ),
+    ),
+  );
+}
+
+/**
+ * Loads Stripe PHP library.
+ */
+function webform_stripe_load_library() {
+  $libraries = libraries_get_libraries();
+
+  // If library exists at 'stripe' and is defined by another module (such as
+  // Ubercart Stripe), use it to avoid conflicts with loading multiple Stripe
+  // PHP libraries.
+  if (isset($libraries['stripe'])) {
+    $library = libraries_load('stripe');
+    if ($library['loaded']) {
+      return $library;
+    }
+  }
+
+  return libraries_load('stripe-php');
+}
+
+/**
+ * Implements hook_image_default_styles().
+ */
+function webform_stripe_image_default_styles() {
+  $styles['webform_stripe'] = array(
+    'label' => 'Webform Stripe',
+    'effects' => array(
+      array(
+        'name' => 'image_scale_and_crop',
+        'data' => array(
+          'width' => 128,
+          'height' => 128,
+        ),
+        'weight' => 1,
+      ),
+    ),
+  );
+  return $styles;
+}
+
+/**
+ * Returns Stripe Checkout settings.
+ */
+function webform_stripe_checkout_settings() {
+  // Merge variable settings with default settings.
+  return variable_get('webform_stripe_checkout_settings', array()) + array(
+    'name' => variable_get('site_name', 'Drupal'),
+    'image' => '',
+    'currency' => 'USD',
+    'locale' => 'auto',
+    'zip-code' => FALSE,
+    'billing-address' => FALSE,
+    'shipping-address' => FALSE,
+    'allow-remember-me' => FALSE,
+    'bitcoin' => FALSE,
+    'alipay' => FALSE,
+    'alipay-reusable' => FALSE,
+  );
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for "webform_component_edit_form".
+ */
+function webform_stripe_form_webform_component_edit_form_alter(&$form, &$form_state) {
+  form_load_include($form_state, 'inc', 'webform_stripe', 'webform_stripe.webform');
+  _webform_stripe_form_webform_component_edit_form_alter($form, $form_state);
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for "webform_configure_form".
+ */
+function webform_stripe_form_webform_configure_form_alter(&$form, &$form_state) {
+  form_load_include($form_state, 'inc', 'webform_stripe', 'webform_stripe.webform');
+  _webform_stripe_form_webform_configure_form_alter($form, $form_state);
+}
+
+/**
+ * Implements hook_form_BASE_FORM_ID_alter() for "webform_client_form".
+ */
+function webform_stripe_form_webform_client_form_alter(&$form, &$form_state, $form_id) {
+  form_load_include($form_state, 'inc', 'webform_stripe', 'webform_stripe.webform');
+  _webform_stripe_form_webform_client_form_alter($form, $form_state);
+}
+
+/**
+ * Attempts to format a Stripe charge amount in a format that makes sense for
+ * the currency. There's probably a better way to manage this, and it would be
+ * even better if the Stripe PHP API offered a way to do this.
+ *
+ * @see https://github.com/stripe/stripe-php/issues/286
+ * @see https://support.stripe.com/questions/which-currencies-does-stripe-support
+ */
+function webform_stripe_format_amount($amount, $currency) {
+  $currency = strtoupper($currency);
+
+  switch ($currency) {
+    // US dollar.
+    case 'USD':
+      return '$' . number_format($amount / 100, 2) . ' ' . $currency;
+
+    // Zero-decimal currencies.
+    // https://support.stripe.com/questions/which-zero-decimal-currencies-does-stripe-support
+    case 'BIF':
+    case 'CLP':
+    case 'DJF':
+    case 'GNF':
+    case 'JPY':
+    case 'KMF':
+    case 'KRW':
+    case 'MGA':
+    case 'PYG':
+    case 'RWF':
+    case 'VND':
+    case 'VUV':
+    case 'XAF':
+    case 'XOF':
+    case 'XPF':
+      return $amount . ' ' . $currency;
+
+    // Other currencies which use decimals. This needs work.
+    default:
+      return number_format($amount / 100, 2) . ' ' . $currency;
+  }
+}
