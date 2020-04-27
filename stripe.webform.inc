@@ -36,8 +36,54 @@ function _webform_defaults_stripe() {
       'panel_label' => t('Pay {{amount}}'),
       'email_type' => 'user',
       'email_component' => '',
+      'email_receipt' => TRUE,
+      'image_type' => 'default',
+      'image_file' => '',
+      'image_url' => '',
     ),
   );
+}
+
+/**
+ * Gets Stripe plans.
+ *
+ * @param bool $test_mode
+ *   TRUE to get test plans, FALSE to get live plans.
+ *
+ * @return array
+ *   An array of Stripe subscription plans.
+ */
+function _webform_stripe_get_plans($test_mode) {
+  $plans = &backdrop_static('webform_stripe_plans');
+
+  if (!isset($plans)) {
+    $plans = array();
+    $secret_key = $test_mode ? config_get('stripe_secret.settings', 'test_secret_key') : config_get('stripe_secret.settings', 'live_secret_key');
+
+    // Load list of Stripe plans.
+    if (($library = webform_stripe_load_library()) && $library['loaded'] && !empty($secret_key)) {
+      \Stripe\Stripe::setApiKey($secret_key);
+      try {
+        foreach (\Stripe\Plan::all()->data as $plan) {
+          $plans[$plan->id] = array(
+            'id' => $plan->id,
+            // As of 2/5/2018, 'name' was replaced with 'nickname'.
+            // https://stripe.com/docs/upgrades#2018-02-05
+            // https://stripe.com/docs/billing/migrating#new-plan-fields
+            'nickname' => isset($plan->nickname) ? $plan->nickname : (
+              isset($plan->name) ? $plan->name : ''
+            ),
+            'amount' => $plan->amount,
+          );
+        }
+      }
+      catch(\Stripe\Error\Base $e) {
+
+      }
+    }
+  }
+
+  return $plans;
 }
 
 /**
@@ -49,7 +95,7 @@ function _webform_edit_stripe($component) {
   $secret_key = stripe_get_secret_key();
   if (!$public_key || !$secret_key) {
     backdrop_set_message(t('You need to <a href="!url">configure your Stripe API keys</a>.', array(
-      '!url' => url('admin/config/services/webform-stripe'),
+      '!url' => url('admin/config/services/stripe'),
     )), 'warning');
   }
 
@@ -422,6 +468,71 @@ function _webform_edit_stripe($component) {
     ),
   );
 
+  // Email receipt.
+  $form['email']['email_receipt'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Send email receipt'),
+    '#description' => t('When enabled, Stripe will send an email receipt for the transaction, regardless of your <a href="!url">email receipts settings</a>. Note that no emails are sent for test mode charges.', array(
+      '!url' => 'https://dashboard.stripe.com/account/emails',
+    )),
+    '#default_value' => $component['extra']['email_receipt'],
+    '#parents' => array('extra', 'email_receipt'),
+  );
+
+  // Image type.
+  $form['image'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Image'),
+    '#collapsible' => TRUE,
+    '#tree' => TRUE,
+    '#parents' => array('extra'),
+  );
+  $form['image']['image_type'] = array(
+    '#type' => 'radios',
+    '#title' => t('Image'),
+    '#options' => array(
+      'default' => t('Default image'),
+      'file' => t('Custom image upload'),
+      'url' => t('Custom image URL'),
+      'none' => t('No image'),
+    ),
+    '#default_value' => $component['extra']['image_type'],
+    '#required' => TRUE,
+  );
+
+  // Image upload.
+  $form['image']['image_file'] = array(
+    '#type' => 'managed_file',
+    '#title' => t('Image upload'),
+    '#description' => t('Select an png, jpg, or gif image that with a minimum size of 128x128px.'),
+    '#default_value' => $component['extra']['image_file'],
+    '#upload_validators' => array(
+      'file_validate_image_resolution' => array(0, '128x128'),
+      'file_validate_extensions' => array('png jpg gif'),
+    ),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="extra[image_type]"]' => array('value' => 'file'),
+      ),
+    ),
+  );
+  if (module_exists('media')) {
+    $form['image']['image_file']['#type'] = 'media';
+  }
+
+  // Image URL.
+  $form['image']['image_url'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Image URL'),
+    '#description' => t('Enter an external URL or an internal path to a square image of your brand or product. It should be a png, jpg, or gif image with a minimum size of 128x128px.'),
+    '#default_value' => $component['extra']['image_url'],
+    '#states' => array(
+      'visible' => array(
+        ':input[name="extra[image_type]"]' => array('value' => 'url'),
+      ),
+    ),
+  );
+
   // Panel label.
   $form['display']['panel_label'] = array(
     '#type' => 'textfield',
@@ -494,9 +605,9 @@ function _stripe_form_webform_component_edit_form_alter(&$form, &$form_state) {
     $plan_options = array();
     $current_plans = _stripe_get_plans($test_mode);
     if (is_array($current_plans) && !empty($current_plans)) {
-      foreach (_stripe_get_plans($test_mode) as $plan) {
-        $plan_options[$plan['id']] = t('@name (@id)', array(
-          '@name' => $plan['name'],
+      foreach ($current_plans as $plan) {
+        $plan_options[$plan['id']] = format_string('@nickname (@id)', array(
+          '@nickname' => $plan['nickname'],
           '@id' => $plan['id'],
         ));
       }
@@ -651,17 +762,14 @@ function stripe_edit_webform_validate($form, &$form_state) {
         'MXN' => 10,
         'SGD' => 50,
       );
-      if (array_key_exists($settings['currency'], $minimum)) {
-        $calculated_minimum = $form_state['values']['extra']['amount_value'];
-        if ($form_state['values']['extra']['amount_value_multiplier']) {
-          $calculated_minimum = $form_state['values']['extra']['amount_value'] * $form_state['values']['extra']['amount_value_multiplier'];
-        }
-        if ($calculated_minimum < $minimum[$settings['currency']]) {
-          form_set_error('extra][amount_value', t('The minimum amount for %currency is %minimum (cents).', array(
-            '%currency' => $settings['currency'],
-            '%minimum' => $minimum[$settings['currency']],
-          )));
-        }
+      if (
+        array_key_exists($settings['currency'], $minimum)
+        && ($form_state['values']['extra']['amount_value'] * $form_state['values']['extra']['amount_value_multiplier']) < $minimum[$settings['currency']]
+      ) {
+        form_set_error('extra][amount_value', t('The minimum amount for %currency is %minimum (cents).', array(
+          '%currency' => $settings['currency'],
+          '%minimum' => $minimum[$settings['currency']],
+        )));
       }
     }
   }
@@ -749,6 +857,16 @@ function stripe_edit_webform_validate($form, &$form_state) {
   if ($form_state['values']['extra']['email_type'] === 'component' && empty($form_state['values']['extra']['email_component'])) {
     form_set_error('extra][email_component', t('Select a component to use for the email address.'));
   }
+
+  // Image file is require is image type is file.
+  if ($form_state['values']['extra']['image_type'] === 'file' && empty($form_state['values']['extra']['image_file'])) {
+    form_set_error('extra][image_file', t('Select a custom image.'));
+  }
+
+  // Image URL is require is image type is URL.
+  if ($form_state['values']['extra']['image_type'] === 'url' && empty($form_state['values']['extra']['image_url'])) {
+    form_set_error('extra][image_url', t('Enter a custom image URL.'));
+  }
 }
 
 /**
@@ -813,7 +931,7 @@ function _stripe_form_webform_client_form_alter(&$form, &$form_state) {
         $form['#prefix'] = '<div id="' . $form['#webform_stripe_html_id'] . '">';
         $form['#suffix'] = '</div>';
 
-        // Add class to form to help Drupal.ajax.prototype.beforeSubmit().
+        // Add class to form to help Backdrop.ajax.prototype.beforeSubmit().
         $form['#attributes']['class'][] = 'webform-stripe-form';
 
         // Replace Webform's submit callback with our own.
@@ -826,7 +944,7 @@ function _stripe_form_webform_client_form_alter(&$form, &$form_state) {
             $form['actions']['submit']['#value'] = STRIPE_PAY_TEXT;
           }
           $form['actions']['submit']['#ajax'] = array(
-            'path' => "stripe-ajax/$cid",
+            'callback' => "stripe_webform_client_form_ajax_callback",
             'wrapper' => $form['#webform_stripe_html_id'],
           );
         }
@@ -838,7 +956,7 @@ function _stripe_form_webform_client_form_alter(&$form, &$form_state) {
             '#value' => t('Save and Pay'),
             '#weight' => 15,
             '#ajax' => array(
-              'path' => "stripe-ajax/$cid",
+              'callback' => "stripe_webform_client_form_ajax_callback",
               'wrapper' => $form['#webform_stripe_html_id'],
             ),
           );
@@ -854,46 +972,41 @@ function _stripe_form_webform_client_form_alter(&$form, &$form_state) {
 /**
  * Webform ajax callback.
  */
-function stripe_webform_client_form_ajax_callback() {
-  // Get component ID, or return not found.
-  $args = func_get_args();
-  $cid = reset($args);
-  if (empty($cid)) {
-    return MENU_NOT_FOUND;
-  }
-
-  // Get the form, build it, and validate it. See ajax_form_callback() and
-  // backdrop_process_form().
-  list($form, $form_state, $form_id, $form_build_id, $commands) = ajax_get_form();
-  $form_state['values'] = array();
-  $form = form_builder($form['#form_id'], $form, $form_state);
+function stripe_webform_client_form_ajax_callback($form, $form_state) {
+  // Validate form.
   backdrop_validate_form($form['#form_id'], $form, $form_state);
 
-  // If form had any validation errors, return it and display the messages.
+  // Form has errors; show errors and scroll to top of form.
   if (form_get_errors()) {
     $commands = ajax_prepare_response($form);
     $commands[] = array(
       'command' => 'webformStripeScroll',
       'selector' => '#' . $form['#webform_stripe_html_id'],
     );
-    return array(
+    $commands[] = array(
       '#type' => 'ajax',
-      '#commands' => $commands,
+      '#commands' => array(
+        array(
+          'command' => 'webformStripeScroll',
+          'selector' => '#' . $form['#webform_stripe_html_id'],
+        ),
+        ajax_command_alert('error'),
+      ),
     );
   }
 
-  // Stripe Payment component.
-  $component = $form['#node']->webform['components'][$cid];
+  // No errors; open Stripe Checkout.
+  else {
+    $commands[] = array(
+      'command' => 'webformStripeCheckout',
+      'params' => stripe_process_checkout_settings($component, $form_state['values']['submitted'], STRIPE_SETTINGS_CHECKOUT),
+    );
+  }
 
-  // Open Stripe Checkout.
+  // Return ajax response.
   return array(
     '#type' => 'ajax',
-    '#commands' => array(
-      array(
-        'command' => 'webformStripeCheckout',
-        'params' => stripe_process_checkout_settings($component, $form_state['values']['submitted'], STRIPE_SETTINGS_CHECKOUT),
-      ),
-    ),
+    '#commands' => $commands,
   );
 }
 
@@ -999,6 +1112,45 @@ function stripe_process_checkout_settings($component, $data, $state) {
     case 'component':
       $settings['email'] = _stripe_process_dynamic_value('email', $component, $data);
       break;
+  }
+
+  // Determine whether or not to send an email receipt via Stripe. For backward
+  // compatibility, if this component setting is not set, enable this feature.
+  $settings['email_receipt'] = !isset($component['extra']['email_receipt']) || !empty($component['extra']['email_receipt']);
+
+  // Merge image default settings.
+  if ($component['extra']['image_type'] === 'default') {
+    $component['extra']['image_type'] = variable_get('webform_stripe_default_image_type', 'none');
+    $component['extra']['image_file'] = variable_get('webform_stripe_default_image_file', '');
+    $component['extra']['image_url'] = variable_get('webform_stripe_default_image_url', '');
+  }
+
+  // Determine image.
+  switch ($component['extra']['image_type']) {
+    // File.
+    case 'file':
+      $file = file_load($component['extra']['image_file']);
+      if ($file) {
+        $settings['image'] = image_style_url('webform_stripe', $file->uri);
+      }
+      break;
+
+    // URL.
+    case 'url':
+      if (!empty($component['extra']['image_url'])) {
+        $settings['image'] = url($component['extra']['image_url']);
+      }
+      break;
+
+    // None.
+    case 'none':
+      $settings['image'] = NULL;
+      break;
+  }
+
+  // Just in case amount is not an integer, round it.
+  if (!empty($settings['amount'])) {
+    $settings['amount'] = round($settings['amount']);
   }
 
   // Allow modules to alter Stripe Checkout settings, keying data by form key
@@ -1125,11 +1277,16 @@ function _stripe_process_token(&$form, &$form_state) {
     if (!empty($settings['plan'])) {
       $customer = \Stripe\Customer::create(array(
         'email' => $email,
-      ));
-      $subscription = $customer->subscriptions->create(array(
         'source' => $token,
-        'plan' => $settings['plan'],
-        'quantity' => $settings['plan_quantity'],
+      ));
+      $subscription = \Stripe\Subscription::create(array(
+        'customer' => $customer->id,
+        'items' => array(
+          array(
+            'plan' => $settings['plan'],
+            'quantity' => $settings['plan_quantity'],
+          ),
+        ),
       ));
       $value = array(
         'test' => $component['extra']['test_mode'],
@@ -1142,18 +1299,12 @@ function _stripe_process_token(&$form, &$form_state) {
 
     // Charge a one-time amount, and save the charge ID, amount, and currency.
     else {
-      $curl = new \Stripe\HttpClient\CurlClient(array(CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2));
-      \Stripe\ApiRequestor::setHttpClient($curl);
-
       $charge = \Stripe\Charge::create(array(
         'source' => $token,
         'amount' => $settings['amount'],
         'description' => !empty($settings['description']) ? $settings['description'] : '',
         'currency' => $settings['currency'],
-        'receipt_email' => $email,
-        'metadata' => array(
-          'submission_url' => url("node/{$component['nid']}/submission/$sid", array('absolute' => TRUE)),
-        ),
+        'receipt_email' => $settings['email_receipt'] ? $email : NULL,
       ));
       $value = array(
         'test' => $component['extra']['test_mode'],
@@ -1168,6 +1319,22 @@ function _stripe_process_token(&$form, &$form_state) {
 
     // Charge was successful, so continue with saving the submission.
     webform_client_form_submit($form, $form_state);
+
+    // Now that the submission has been saved, we have a submission ID and can
+    // update the Subscription's or Charge's metadata with a link to the
+    // submission, in addition to any custom metadata set in
+    // hook_webform_stripe_checkout_settings_alter().
+    $settings['metadata']['submission_url'] = url("node/{$component['nid']}/submission/{$form_state['values']['details']['sid']}", array('absolute' => TRUE));
+    if (isset($subscription)) {
+      \Stripe\Subscription::update($subscription->id, array(
+        'metadata' => $settings['metadata'],
+      ));
+    }
+    else if (isset($charge)) {
+      \Stripe\Charge::update($charge->id, array(
+        'metadata' => $settings['metadata'],
+      ));
+    }
   }
 
   // Transaction failed.
@@ -1255,7 +1422,7 @@ function _stripe_get_plans($test_mode) {
         foreach (\Stripe\Plan::all()->data as $plan) {
           $plans[$plan->id] = array(
             'id' => $plan->id,
-            'name' => $plan->name,
+            'nickname' => $plan->nickname,
             'amount' => $plan->amount,
           );
         }

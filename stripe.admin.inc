@@ -83,6 +83,53 @@ function stripe_admin_settings_form($form, $form_state) {
     );
   }
 
+  // Image type.
+  $form['image'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Default image'),
+  );
+  $form['image']['default_image_type'] = array(
+    '#type' => 'radios',
+    '#title' => t('Image type'),
+    '#options' => array(
+      'none' => t('No image'),
+      'file' => t('Custom image upload'),
+      'url' => t('Custom image URL'),
+    ),
+    '#default_value' => $config->get('default_image_type'),
+    '#required' => TRUE,
+  );
+
+  // Image upload.
+  $form['image']['default_image_file'] = array(
+    '#type' => 'managed_file',
+    '#title' => t('Image upload'),
+    '#description' => t('Select an png, jpg, or gif image that with a minimum size of 128x128px.'),
+    '#default_value' => $config->get('default_image_file'),
+    '#upload_validators' => array(
+      'file_validate_image_resolution' => array(0, '128x128'),
+      'file_validate_extensions' => array('png jpg gif'),
+    ),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="default_image_type"]' => array('value' => 'file'),
+      ),
+    ),
+  );
+
+  // Image URL.
+  $form['image']['default_image_url'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Image URL'),
+    '#description' => t('Enter an external URL or an internal path to a square image of your brand or product. It should be a png, jpg, or gif image with a minimum size of 128x128px.'),
+    '#default_value' => $config->get('default_image_url'),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="default_image_type"]' => array('value' => 'url'),
+      ),
+    ),
+  );
+
   // Checkout settings.
   $form['checkout'] = array(
     '#type' => 'fieldset',
@@ -198,6 +245,9 @@ function stripe_admin_settings_form_submit($form, &$form_state) {
   $config->set('test_public_key' , $values['test_public_key']);
   $config->set('live_public_key' , $values['live_public_key']);
   $config->set('log_webhooks' , $values['log_webhooks']);
+  $config->set('default_image_type' , $values['default_image_type']);
+  $config->set('default_image_file' , $values['default_image_file']);
+  $config->set('default_image_url' , $values['default_image_url']);
   $config->set('name' , $values['checkout']['name']);
   $config->set('currency' , $values['checkout']['currency']);
   $config->set('locale' , $values['checkout']['locale']);

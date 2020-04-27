@@ -66,16 +66,6 @@ function stripe_menu() {
     'type' => MENU_DEFAULT_LOCAL_TASK,
     'weight' => -10,
   );
-  $items['stripe-ajax'] = array(
-    'type' => MENU_CALLBACK,
-    'title' => 'Ajax callback',
-    'access callback' => TRUE,
-    'page callback' => 'stripe_webform_client_form_ajax_callback',
-    'delivery callback' => 'ajax_deliver',
-    'theme callback' => 'ajax_base_page_theme',
-    'file' => 'stripe.webform.inc',
-  );
-
   $items['stripe/webhook'] = array(
     'type' => MENU_CALLBACK,
     'access callback' => TRUE,

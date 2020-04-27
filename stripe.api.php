@@ -88,4 +88,10 @@ function hook_stripe_checkout_settings_alter(&$settings, &$context) {
   if ($context['state'] === STRIPE_SETTINGS_CHECKOUT) {
     // Can't think of an example.
   }
+
+  // Do something only when processing Stripe token.
+  else if ($context['state'] === STRIPE_SETTINGS_PROCESS) {
+    // Set current user ID in Stripe metadata.
+    $settings['metadata']['uid'] = user_uid_optional_load()->uid;
+  }
 }
