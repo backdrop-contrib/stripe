@@ -999,7 +999,7 @@ function stripe_webform_client_form_ajax_callback($form, $form_state) {
   else {
     $commands[] = array(
       'command' => 'webformStripeCheckout',
-      'params' => stripe_process_checkout_settings($component, $form_state['values']['submitted'], STRIPE_SETTINGS_CHECKOUT),
+      'params' => stripe_process_checkout_settings($form['#webform_stripe'], $form_state['values']['submitted'], STRIPE_SETTINGS_CHECKOUT),
     );
   }
 
@@ -1120,9 +1120,10 @@ function stripe_process_checkout_settings($component, $data, $state) {
 
   // Merge image default settings.
   if ($component['extra']['image_type'] === 'default') {
-    $component['extra']['image_type'] = variable_get('webform_stripe_default_image_type', 'none');
-    $component['extra']['image_file'] = variable_get('webform_stripe_default_image_file', '');
-    $component['extra']['image_url'] = variable_get('webform_stripe_default_image_url', '');
+    $config = config('stripe.settings');
+    $component['extra']['image_type'] = $config->get('default_image_type');
+    $component['extra']['image_file'] = $config->get('default_image_file');
+    $component['extra']['image_url'] = $config->get('default_image_url');
   }
 
   // Determine image.
@@ -1255,7 +1256,7 @@ function _stripe_process_token(&$form, &$form_state) {
 
   // Process settings.
   $settings = stripe_process_checkout_settings($component, $form_state['values']['submitted'], STRIPE_SETTINGS_PROCESS);
-
+  
   // Parse Stripe token and email.
   list($token, $email) = explode(':', $value);
 
