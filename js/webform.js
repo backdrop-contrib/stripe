@@ -20,7 +20,6 @@
    * token field, and submit form.
    */
   Backdrop.ajax.prototype.commands.webformStripeCheckout = function(ajax, data, status) {
-    console.log(data);
     StripeCheckout.open($.extend(data.params, {
       token: function(token) {
         $('.webform-stripe-token', ajax.form.context).val(token.id + ':' + token.email);

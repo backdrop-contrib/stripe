@@ -69,7 +69,7 @@ function stripe_requirements($phase) {
     if ($stripe['included']) {
       $requirements['stripe_library'] = array(
         'title' => $t('Stripe PHP library'),
-        'value' => $t('Using included Stripe PHP library'),
+        'value' => $t('Using included Stripe PHP library (v5.7.0)'),
         'severity' => REQUIREMENT_OK,
       );
 
@@ -83,7 +83,7 @@ function stripe_requirements($phase) {
         'title' => $t('Stripe PHP library'),
         'value' => $t('Possible conflict'),
         'severity' => REQUIREMENT_WARNING,
-        'description' => $t('Duplicate Stripe API libraries found. It\'s recommended that you disable/uninstall any modules other than the offical Stripe module.', array(
+        'description' => $t('Duplicate Stripe API libraries found. It\'s recommended that you disable/uninstall any modules other than the official Stripe module.', array(
         )),
       );
 
