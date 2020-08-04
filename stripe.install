@@ -69,7 +69,7 @@ function stripe_requirements($phase) {
     if ($stripe['included']) {
       $requirements['stripe_library'] = array(
         'title' => $t('Stripe PHP library'),
-        'value' => $t('Using included Stripe PHP library (v5.7.0)'),
+        'value' => $t('Using included Stripe PHP library (7.29.0)'),
         'severity' => REQUIREMENT_OK,
       );
 
