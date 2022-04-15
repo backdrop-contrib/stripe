@@ -5,8 +5,8 @@ module is designed to be required by other contrib/custom modules.
 
 ## Dependencies
 
-- None [Stripe's PHP bindings](https://github.com/stripe/stripe-php) have been
-  packaged and incuded in this moduile
+- None ([Stripe's PHP bindings](https://github.com/stripe/stripe-php) have been
+  packaged and incuded in this moduile, currently v7.123.0)
 
 ## Features
 
@@ -95,3 +95,5 @@ complete text.
  - This module was originally created and is maintained for Drupal by
    [Dan Pepin](https://github.com/donutdan4114) and
    [Bonify, LLC](http://bonify.io)
+ - The [Stripe PHP bindings](https://github.com/stripe/stripe-php) have been
+   released under the MIT license.
