@@ -180,23 +180,24 @@ function stripe_form_webform_client_form_alter(&$form, &$form_state, $form_id) {
 function stripe_load_library() {
   $stripe = array('loaded' => FALSE);
   if (module_exists('libraries')) {
-    watchdog('stripe', t('Possible library conflict with Stripe module'), WATCHDOG_WARNING);
     $libraries = libraries_get_libraries();
 
     // If library exists at 'stripe' and is defined by another module (such as
     // Ubercart Stripe), use it to avoid conflicts with loading multiple Stripe
     // PHP libraries.
     if (isset($libraries['stripe'])) {
+      watchdog('stripe', t('Possible library conflict with Stripe module'), WATCHDOG_WARNING);
       $library = libraries_load('stripe');
       if ($library['loaded']) {
         return $library;
       }
     }
   }
-  else {
-    include_once('libraries/init.php');
-    $stripe['included'] = TRUE;
-  }
+
+  // If the Libraries module isn't installed or there is no duplicate Stripe
+  // library, we can continue below.
+  include_once('libraries/init.php');
+  $stripe['included'] = TRUE;
 
   return $stripe;
 }
