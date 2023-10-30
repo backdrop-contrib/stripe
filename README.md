@@ -69,7 +69,6 @@ This module provides a secure Stripe webhook (events are validated) and provides
 two hooks for you to implement in your custom module. See stripe.api.php for API
 documentation.
 
-
 This is an *unofficial* Stripe module and is not associated with Stripe.
 
 ## Issues
@@ -84,14 +83,14 @@ complete text.
 
 ## Current Maintainers
 
-- [Laryn Kragt Bakker](https://github.com/laryn) - [CEDC.org](https://cedc.org)
+- [Laryn Kragt Bakker](https://github.com/laryn)
 - [Jen Lampton](https://github.com/jenlampton)
 
 ## Credits
 
  - This module was ported to Backdrop by
-   [Laryn Kragt Bakker](https://github.com/laryn) -
-   [CEDC.org](https://cedc.org).
+   [Laryn Kragt Bakker](https://github.com/laryn)
+ - The Backdrop port was initially sponsored by [CEDC.org](https://cedc.org)
  - This module was originally created and is maintained for Drupal by
    [Dan Pepin](https://github.com/donutdan4114) and
    [Bonify, LLC](http://bonify.io)

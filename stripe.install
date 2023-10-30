@@ -108,3 +108,15 @@ function stripe_requirements($phase) {
 
   return $requirements;
 }
+
+/**
+ * Remove deprecated options from configuration. These were removed in the
+ * Stripe 9.0.0 bindings.
+ */
+function stripe_update_1100() {
+  $config = config('stripe.settings');
+  $config->clear('alipay');
+  $config->clear('alipay_reusable');
+  $config->clear('bitcoin');
+  $config->save();
+}

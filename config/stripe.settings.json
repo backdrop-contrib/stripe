@@ -10,8 +10,5 @@
     "zip_code": 0,
     "billing_address": 0,
     "shipping_address": 0,
-    "allow_remember_me": 0,
-    "bitcoin": 0,
-    "alipay": 0,
-    "alipay_reusable": 0
+    "allow_remember_me": 0
 }
