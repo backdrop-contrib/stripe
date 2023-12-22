@@ -3,14 +3,9 @@
 This module provides a simple abstraction to use the Stripe PHP SDK. This
 module is designed to be required by other contrib/custom modules.
 
-## Dependencies
-
-- None [Stripe's PHP bindings](https://github.com/stripe/stripe-php) have been
-  packaged and incuded in this moduile
-
 ## Features
 
-- Features from the webform_stripe module are included in the 2.x version.
+- Features from the `webform_stripe` module are included in the 2.x version.
 
 ## Installation
 
@@ -76,11 +71,6 @@ This is an *unofficial* Stripe module and is not associated with Stripe.
 Bugs and Feature requests should be reported in this module's
 [Issue Queue](https://github.com/backdrop-contrib/stripe_api/issues).
 
-## License
-
-This project is GPL v2 software. See the LICENSE.txt file in this directory for
-complete text.
-
 ## Current Maintainers
 
 - [Laryn Kragt Bakker](https://github.com/laryn)
@@ -94,3 +84,14 @@ complete text.
  - This module was originally created and is maintained for Drupal by
    [Dan Pepin](https://github.com/donutdan4114) and
    [Bonify, LLC](http://bonify.io)
+
+## Stripe Bindings
+
+- Note: [Stripe's PHP bindings](https://github.com/stripe/stripe-php) have been
+  packaged and incuded in this module. (Version 13.7.0). The Stripe bindings
+  are released under the MIT license.
+
+## License
+
+This project is GPL v2 software. See the LICENSE.txt file in this directory for
+complete text.
