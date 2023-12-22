@@ -26,8 +26,8 @@ namespace Stripe;
  * <code>Event</code> objects directly to an endpoint on your server. You can manage
  * webhooks in your
  * <a href="https://dashboard.stripe.com/account/webhooks">account settings</a>. Learn how
- * to [listen for events]
- * (/docs/webhooks) so that your integration can automatically trigger reactions.
+ * to <a href="https://stripe.com/docs/webhooks">listen for events</a>
+ * so that your integration can automatically trigger reactions.
  *
  * When using <a href="https://stripe.com/docs/connect">Connect</a>, you can also receive event notifications
  * that occur in connected accounts. For these events, there's an
@@ -89,6 +89,13 @@ class Event extends ApiResource
     const CHECKOUT_SESSION_ASYNC_PAYMENT_SUCCEEDED = 'checkout.session.async_payment_succeeded';
     const CHECKOUT_SESSION_COMPLETED = 'checkout.session.completed';
     const CHECKOUT_SESSION_EXPIRED = 'checkout.session.expired';
+    const CLIMATE_ORDER_CANCELED = 'climate.order.canceled';
+    const CLIMATE_ORDER_CREATED = 'climate.order.created';
+    const CLIMATE_ORDER_DELAYED = 'climate.order.delayed';
+    const CLIMATE_ORDER_DELIVERED = 'climate.order.delivered';
+    const CLIMATE_ORDER_PRODUCT_SUBSTITUTED = 'climate.order.product_substituted';
+    const CLIMATE_PRODUCT_CREATED = 'climate.product.created';
+    const CLIMATE_PRODUCT_PRICING_UPDATED = 'climate.product.pricing_updated';
     const COUPON_CREATED = 'coupon.created';
     const COUPON_DELETED = 'coupon.deleted';
     const COUPON_UPDATED = 'coupon.updated';
@@ -123,6 +130,7 @@ class Event extends ApiResource
     const FINANCIAL_CONNECTIONS_ACCOUNT_DISCONNECTED = 'financial_connections.account.disconnected';
     const FINANCIAL_CONNECTIONS_ACCOUNT_REACTIVATED = 'financial_connections.account.reactivated';
     const FINANCIAL_CONNECTIONS_ACCOUNT_REFRESHED_BALANCE = 'financial_connections.account.refreshed_balance';
+    const FINANCIAL_CONNECTIONS_ACCOUNT_REFRESHED_TRANSACTIONS = 'financial_connections.account.refreshed_transactions';
     const IDENTITY_VERIFICATION_SESSION_CANCELED = 'identity.verification_session.canceled';
     const IDENTITY_VERIFICATION_SESSION_CREATED = 'identity.verification_session.created';
     const IDENTITY_VERIFICATION_SESSION_PROCESSING = 'identity.verification_session.processing';
@@ -315,6 +323,13 @@ class Event extends ApiResource
     const TYPE_CHECKOUT_SESSION_ASYNC_PAYMENT_SUCCEEDED = 'checkout.session.async_payment_succeeded';
     const TYPE_CHECKOUT_SESSION_COMPLETED = 'checkout.session.completed';
     const TYPE_CHECKOUT_SESSION_EXPIRED = 'checkout.session.expired';
+    const TYPE_CLIMATE_ORDER_CANCELED = 'climate.order.canceled';
+    const TYPE_CLIMATE_ORDER_CREATED = 'climate.order.created';
+    const TYPE_CLIMATE_ORDER_DELAYED = 'climate.order.delayed';
+    const TYPE_CLIMATE_ORDER_DELIVERED = 'climate.order.delivered';
+    const TYPE_CLIMATE_ORDER_PRODUCT_SUBSTITUTED = 'climate.order.product_substituted';
+    const TYPE_CLIMATE_PRODUCT_CREATED = 'climate.product.created';
+    const TYPE_CLIMATE_PRODUCT_PRICING_UPDATED = 'climate.product.pricing_updated';
     const TYPE_COUPON_CREATED = 'coupon.created';
     const TYPE_COUPON_DELETED = 'coupon.deleted';
     const TYPE_COUPON_UPDATED = 'coupon.updated';
@@ -349,6 +364,7 @@ class Event extends ApiResource
     const TYPE_FINANCIAL_CONNECTIONS_ACCOUNT_DISCONNECTED = 'financial_connections.account.disconnected';
     const TYPE_FINANCIAL_CONNECTIONS_ACCOUNT_REACTIVATED = 'financial_connections.account.reactivated';
     const TYPE_FINANCIAL_CONNECTIONS_ACCOUNT_REFRESHED_BALANCE = 'financial_connections.account.refreshed_balance';
+    const TYPE_FINANCIAL_CONNECTIONS_ACCOUNT_REFRESHED_TRANSACTIONS = 'financial_connections.account.refreshed_transactions';
     const TYPE_IDENTITY_VERIFICATION_SESSION_CANCELED = 'identity.verification_session.canceled';
     const TYPE_IDENTITY_VERIFICATION_SESSION_CREATED = 'identity.verification_session.created';
     const TYPE_IDENTITY_VERIFICATION_SESSION_PROCESSING = 'identity.verification_session.processing';

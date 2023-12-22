@@ -85,9 +85,12 @@ class ErrorObject extends StripeObject
     const CODE_COUPON_EXPIRED = 'coupon_expired';
     const CODE_CUSTOMER_MAX_PAYMENT_METHODS = 'customer_max_payment_methods';
     const CODE_CUSTOMER_MAX_SUBSCRIPTIONS = 'customer_max_subscriptions';
+    const CODE_CUSTOMER_TAX_LOCATION_INVALID = 'customer_tax_location_invalid';
     const CODE_DEBIT_NOT_AUTHORIZED = 'debit_not_authorized';
     const CODE_EMAIL_INVALID = 'email_invalid';
     const CODE_EXPIRED_CARD = 'expired_card';
+    const CODE_FINANCIAL_CONNECTIONS_ACCOUNT_INACTIVE = 'financial_connections_account_inactive';
+    const CODE_FINANCIAL_CONNECTIONS_NO_SUCCESSFUL_TRANSACTION_REFRESH = 'financial_connections_no_successful_transaction_refresh';
     const CODE_IDEMPOTENCY_KEY_IN_USE = 'idempotency_key_in_use';
     const CODE_INCORRECT_ADDRESS = 'incorrect_address';
     const CODE_INCORRECT_CVC = 'incorrect_cvc';
@@ -192,11 +195,13 @@ class ErrorObject extends StripeObject
     const CODE_TAXES_CALCULATION_FAILED = 'taxes_calculation_failed';
     const CODE_TERMINAL_LOCATION_COUNTRY_UNSUPPORTED = 'terminal_location_country_unsupported';
     const CODE_TERMINAL_READER_BUSY = 'terminal_reader_busy';
+    const CODE_TERMINAL_READER_HARDWARE_FAULT = 'terminal_reader_hardware_fault';
     const CODE_TERMINAL_READER_OFFLINE = 'terminal_reader_offline';
     const CODE_TERMINAL_READER_TIMEOUT = 'terminal_reader_timeout';
     const CODE_TESTMODE_CHARGES_ONLY = 'testmode_charges_only';
     const CODE_TLS_VERSION_UNSUPPORTED = 'tls_version_unsupported';
     const CODE_TOKEN_ALREADY_USED = 'token_already_used';
+    const CODE_TOKEN_CARD_NETWORK_INVALID = 'token_card_network_invalid';
     const CODE_TOKEN_IN_USE = 'token_in_use';
     const CODE_TRANSFER_SOURCE_BALANCE_PARAMETERS_MISMATCH = 'transfer_source_balance_parameters_mismatch';
     const CODE_TRANSFERS_NOT_ALLOWED = 'transfers_not_allowed';
