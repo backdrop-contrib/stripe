@@ -203,26 +203,6 @@ function stripe_admin_settings_form($form, $form_state) {
     '#title' => t('Include option to "Remember Me" for future purchases'),
     '#default_value' => $config->get('allow_remember_me'),
   );
-  $form['checkout']['bitcoin'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Accept Bitcoin payments'),
-    '#default_value' => $config->get('bitcoin'),
-  );
-  $form['checkout']['alipay'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Accept Alipay payments'),
-    '#default_value' => $config->get('alipay'),
-  );
-  $form['checkout']['alipay_reusable'] = array(
-    '#type' => 'checkbox',
-    '#title' => t("Request reusable access to customer's Alipay account"),
-    '#default_value' => $config->get('alipay_reusable'),
-    '#states' => array(
-      'visible' => array(
-        ':input[name="webform[alipay]"]' => array('checked' => TRUE),
-      ),
-    ),
-  );
 
   $form['actions']['#type'] = 'actions';
   $form['actions']['submit'] = array(
@@ -255,9 +235,6 @@ function stripe_admin_settings_form_submit($form, &$form_state) {
   $config->set('billing_address' , $values['checkout']['billing_address']);
   $config->set('shipping_address' , $values['checkout']['shipping_address']);
   $config->set('allow_remember_me' , $values['checkout']['allow_remember_me']);
-  $config->set('bitcoin' , $values['checkout']['bitcoin']);
-  $config->set('alipay' , $values['checkout']['alipay']);
-  $config->set('alipay_reusable' , $values['checkout']['alipay_reusable']);
   $config->save();
 
   $secretconfig->set('test_secret_key' , $values['test_secret_key']);

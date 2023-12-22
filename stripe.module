@@ -250,9 +250,6 @@ function stripe_checkout_settings() {
     'billing-address' => $config->get('billing_address'),
     'shipping-address' => $config->get('shipping_address'),
     'allow-remember-me' => $config->get('allow_remember_me'),
-    'bitcoin' => $config->get('bitcoin'),
-    'alipay' => $config->get('alipay'),
-    'alipay-reusable' => $config->get('alipay_reusable'),
   );
 }
 
