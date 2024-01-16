@@ -972,7 +972,7 @@ function _stripe_form_webform_client_form_alter(&$form, &$form_state) {
 /**
  * Webform ajax callback.
  */
-function stripe_webform_client_form_ajax_callback($form, $form_state) {
+function stripe_webform_client_form_ajax_callback(&$form, &$form_state) {
   // Validate form.
   backdrop_validate_form($form['#form_id'], $form, $form_state);
 
@@ -994,13 +994,24 @@ function stripe_webform_client_form_ajax_callback($form, $form_state) {
       ),
     );
   }
-
-  // No errors; open Stripe Checkout.
+  // No errors; continue.
   else {
-    $commands[] = array(
-      'command' => 'webformStripeCheckout',
-      'params' => stripe_process_checkout_settings($form['#webform_stripe'], $form_state['values']['submitted'], STRIPE_SETTINGS_CHECKOUT),
-    );
+    $params = stripe_process_checkout_settings($form['#webform_stripe'], $form_state['values']['submitted'], STRIPE_SETTINGS_CHECKOUT);
+    // If an amount is set, open Stripe Checkout.
+    if (!empty($params['amount'])) {
+      $commands[] = array(
+        'command' => 'webformStripeCheckout',
+        'params' => $params,
+      );
+    }
+    // Otherwise, submit the form without getting Stripe involved.
+    else {
+      webform_client_form_submit($form, $form_state);
+      $commands[] = array(
+        'command' => 'redirect',
+        'url' => $form['#node']->webform['redirect_url'],
+      );
+    }
   }
 
   // Return ajax response.
@@ -1256,7 +1267,7 @@ function _stripe_process_token(&$form, &$form_state) {
 
   // Process settings.
   $settings = stripe_process_checkout_settings($component, $form_state['values']['submitted'], STRIPE_SETTINGS_PROCESS);
-  
+
   // Parse Stripe token and email.
   list($token, $email) = explode(':', $value);
 
