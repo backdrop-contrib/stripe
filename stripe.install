@@ -82,12 +82,7 @@ function stripe_requirements($phase) {
       );
     }
 
-    // Check for Stripe keys.
     if (stripe_get_public_key() != '' && stripe_get_secret_key() != '') {
-      $api_keys_configured = TRUE;
-    }
-
-    if ($api_keys_configured) {
       $requirements['stripe_keys'] = array(
         'title' => $t('Stripe API keys'),
         'value' => $t('API Keys Properly Configured'),
