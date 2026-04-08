@@ -111,7 +111,7 @@ function stripe_incoming_webhook() {
 /**
  * Implements hook_stripe_webhook().
  */
-function stripe_stripe_webhook($type, $data, Stripe\Event $event = NULL) {
+function stripe_stripe_webhook($type, $data, ?Stripe\Event $event = NULL) {
   if (config_get('stripe.settings', 'log_webhooks')) {
     watchdog('stripe', 'Processed webhook: @name<br /><br />Data: @data', array(
       '@name' => $type,
