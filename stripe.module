@@ -182,26 +182,35 @@ function stripe_form_webform_client_form_alter(&$form, &$form_state, $form_id) {
  * Loads Stripe PHP library.
  */
 function stripe_load_library() {
-  $stripe = array('loaded' => FALSE);
-  if (module_exists('libraries')) {
-    $libraries = libraries_get_libraries();
-
+  $stripe = array(
+    'loaded' => FALSE,
+    'bundled' => FALSE,
+  );
+  if (class_exists('Stripe\\Stripe')) {
+    // First, check if the Stripe PHP library is already loaded.
+    $stripe['loaded'] = TRUE;
+  }
+  elseif (module_exists('libraries')) {
+    // Otherwise, see if it's being managed through the Libraries module.
     // If library exists at 'stripe' and is defined by another module (such as
     // Ubercart Stripe), use it to avoid conflicts with loading multiple Stripe
     // PHP libraries.
+    $libraries = libraries_get_libraries();
     if (isset($libraries['stripe'])) {
       watchdog('stripe', t('Possible library conflict with Stripe module'), WATCHDOG_WARNING);
       $library = libraries_load('stripe');
       if ($library['loaded']) {
-        return $library;
+        $stripe['loaded'] = TRUE;
       }
     }
   }
-
-  // If the Libraries module isn't installed or there is no duplicate Stripe
-  // library, we can continue below.
-  include_once('libraries/init.php');
-  $stripe['included'] = TRUE;
+  else {
+    // If the Libraries module isn't installed or there is no duplicate Stripe
+    // library, we can load the bundled library.
+    include_once('libraries/init.php');
+    $stripe['loaded'] = TRUE;
+    $stripe['bundled'] = TRUE;
+  }
 
   return $stripe;
 }
@@ -244,7 +253,7 @@ function stripe_get_key($type = NULL, $mode = NULL) {
  * @return string
  *   Returns the secret key.
  *
- * @see stripe_get_key().
+ * @see stripe_get_key()
  */
 function stripe_get_secret_key($mode = '') {
   if (empty($mode)) {

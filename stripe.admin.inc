@@ -262,7 +262,7 @@ function stripe_test_connection($form, $form_state) {
 
   // Connection worked.
   if ($account) {
-    $messages[] = t('SUCCESS: connected to stripe accunt :no.', array(':no' => $account->id));
+    $messages[] = t('SUCCESS: connected to Stripe account :no.', array(':no' => $account->id));
 
     if ($account->livemode) {
       $messages[] = t('This account is live.');
@@ -275,7 +275,7 @@ function stripe_test_connection($form, $form_state) {
   }
 
   else {
-    $messages[] = 'Error! Could not connect!';
+    $messages[] = t('ERROR: Could not connect to Stripe account.');
   }
 
   $return = '<strong>' . t('Test results:') . '</strong>';

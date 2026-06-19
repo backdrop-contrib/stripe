@@ -1,0 +1,15 @@
+{
+  "name": "backdropcms/stripe",
+  "description": "Stripe Integration Backdrop Module.",
+  "homepage": "https://www.backdropcms.org/project/stripe",
+  "license": "GNU",
+  "keywords": [
+    "stripe",
+    "payment",
+    "gateway",
+    "php"
+  ],
+  "require": {
+    "stripe/stripe-php": "^20.2"
+  }
+}

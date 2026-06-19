@@ -61,15 +61,12 @@ function _webform_stripe_get_plans($test_mode) {
     $secret_key = $test_mode ? config_get('stripe_secret.settings', 'test_secret_key') : config_get('stripe_secret.settings', 'live_secret_key');
 
     // Load list of Stripe plans.
-    if (($library = webform_stripe_load_library()) && $library['loaded'] && !empty($secret_key)) {
+    if (($library = stripe_load_library()) && $library['loaded'] && !empty($secret_key)) {
       \Stripe\Stripe::setApiKey($secret_key);
       try {
         foreach (\Stripe\Plan::all()->data as $plan) {
           $plans[$plan->id] = array(
             'id' => $plan->id,
-            // As of 2/5/2018, 'name' was replaced with 'nickname'.
-            // https://stripe.com/docs/upgrades#2018-02-05
-            // https://stripe.com/docs/billing/migrating#new-plan-fields
             'nickname' => isset($plan->nickname) ? $plan->nickname : (
               isset($plan->name) ? $plan->name : ''
             ),
@@ -1256,7 +1253,7 @@ function _stripe_process_token(&$form, &$form_state) {
 
   // Process settings.
   $settings = stripe_process_checkout_settings($component, $form_state['values']['submitted'], STRIPE_SETTINGS_PROCESS);
-  
+
   // Parse Stripe token and email.
   list($token, $email) = explode(':', $value);
 

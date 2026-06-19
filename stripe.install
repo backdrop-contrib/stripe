@@ -66,19 +66,27 @@ function stripe_requirements($phase) {
 
     // Check for the Stripe PHP library.
     $stripe = stripe_load_library();
-    if (isset($stripe['included']) && $stripe['included']) {
+    if (!empty($stripe['bundled'])) {
       $requirements['stripe_library'] = array(
         'title' => $t('Stripe PHP library'),
-        'value' => $t('Using included Stripe PHP library (7.29.0)'),
+        'value' => $t('Using included Stripe PHP library (20.2.1)'),
         'severity' => REQUIREMENT_OK,
       );
     }
-    elseif (isset($stripe['loaded']) && $stripe['loaded']) {
+    elseif (!empty($stripe['loaded'])) {
       $requirements['stripe_library'] = array(
         'title' => $t('Stripe PHP library'),
-        'value' => $t('Possible conflict'),
-        'severity' => REQUIREMENT_WARNING,
-        'description' => $t('Duplicate Stripe API libraries found. It\'s recommended that you disable/uninstall any modules other than the official Stripe module.', array()),
+        'value' => $t('Version ' . \Stripe\Stripe::VERSION . ' (Not using the bundled Stripe PHP library)'),
+        'severity' => REQUIREMENT_INFO,
+        'description' => $t('The Stripe PHP library is being loaded from outside of the Stripe module. Ensure there are no conflicts.', array()),
+      );
+    }
+    else {
+      $requirements['stripe_library'] = array(
+        'title' => $t('Stripe PHP library'),
+        'value' => $t('Not found'),
+        'severity' => REQUIREMENT_ERROR,
+        'description' => $t('The Stripe PHP library is not found.', array()),
       );
     }
 

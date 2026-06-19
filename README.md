@@ -88,7 +88,7 @@ Bugs and Feature requests should be reported in this module's
 ## Stripe Bindings
 
 - Note: [Stripe's PHP bindings](https://github.com/stripe/stripe-php) have been
-  packaged and incuded in this module. (Version 13.7.0). The Stripe bindings
+  packaged and incuded in this module. (Version 20.2.1). The Stripe bindings
   are released under the MIT license.
 
 ## License
