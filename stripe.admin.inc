@@ -229,24 +229,24 @@ function stripe_admin_settings_form_submit($form, &$form_state) {
   $secretconfig = config('stripe_secret.settings');
   $values = $form_state['values'];
 
-  $config->set('mode' , $values['mode']);
-  $config->set('test_public_key' , $values['test_public_key']);
-  $config->set('live_public_key' , $values['live_public_key']);
-  $config->set('log_webhooks' , $values['log_webhooks']);
-  $config->set('default_image_type' , $values['default_image_type']);
-  $config->set('default_image_file' , $values['default_image_file']);
-  $config->set('default_image_url' , $values['default_image_url']);
-  $config->set('name' , $values['checkout']['name']);
-  $config->set('currency' , $values['checkout']['currency']);
-  $config->set('locale' , $values['checkout']['locale']);
-  $config->set('zip_code' , $values['checkout']['zip_code']);
-  $config->set('billing_address' , $values['checkout']['billing_address']);
-  $config->set('shipping_address' , $values['checkout']['shipping_address']);
-  $config->set('allow_remember_me' , $values['checkout']['allow_remember_me']);
+  $config->set('mode', $values['mode']);
+  $config->set('test_public_key', $values['test_public_key']);
+  $config->set('live_public_key', $values['live_public_key']);
+  $config->set('log_webhooks', $values['log_webhooks']);
+  $config->set('default_image_type', $values['default_image_type']);
+  $config->set('default_image_file', $values['default_image_file']);
+  $config->set('default_image_url', $values['default_image_url']);
+  $config->set('name', $values['checkout']['name']);
+  $config->set('currency', $values['checkout']['currency']);
+  $config->set('locale', $values['checkout']['locale']);
+  $config->set('zip_code', $values['checkout']['zip_code']);
+  $config->set('billing_address', $values['checkout']['billing_address']);
+  $config->set('shipping_address', $values['checkout']['shipping_address']);
+  $config->set('allow_remember_me', $values['checkout']['allow_remember_me']);
   $config->save();
 
-  $secretconfig->set('test_secret_key' , $values['test_secret_key']);
-  $secretconfig->set('live_secret_key' , $values['live_secret_key']);
+  $secretconfig->set('test_secret_key', $values['test_secret_key']);
+  $secretconfig->set('live_secret_key', $values['live_secret_key']);
   $secretconfig->save();
 
   backdrop_set_message(t('Stripe API settings have been saved.'));
@@ -262,20 +262,20 @@ function stripe_test_connection($form, $form_state) {
 
   // Connection worked.
   if ($account) {
-    $messages[] = t('SUCCESS: connected to Stripe account :no.', array(':no' => $account->id));
+    $messages[] = t('Success: connected to Stripe account :no.', array(':no' => $account->id));
 
-    if ($account->livemode) {
-      $messages[] = t('This account is live.');
+    if ($account->charges_enabled) {
+      $messages[] = t('This account is able to process charges.');
     }
     else {
-      $messages[] = t('WARNING: This account is not yet live.');
+      $messages[] = t('Warning: This account is not able to process charges. Look for more information in your Stripe dashboard.');
     }
 
     // @todo add more helpful information.
   }
 
   else {
-    $messages[] = t('ERROR: Could not connect to Stripe account.');
+    $messages[] = t('Error: Could not connect to Stripe account.');
   }
 
   $return = '<strong>' . t('Test results:') . '</strong>';
