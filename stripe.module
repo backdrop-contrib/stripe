@@ -70,6 +70,14 @@ function stripe_menu() {
     'type' => MENU_DEFAULT_LOCAL_TASK,
     'weight' => -10,
   );
+  $items['stripe/webform/return/%node/%'] = array(
+    'type' => MENU_CALLBACK,
+    'page callback' => 'stripe_webform_checkout_return',
+    'page arguments' => array(3, 4),
+    'access callback' => '_stripe_webform_return_access',
+    'access arguments' => array(3, 4),
+    'file' => 'stripe.webform.inc',
+  );
   $items['stripe/webhook'] = array(
     'type' => MENU_CALLBACK,
     'access callback' => TRUE,
@@ -117,6 +125,23 @@ function stripe_stripe_webhook($type, $data, ?Stripe\Event $event = NULL) {
       '@name' => $type,
       '@data' => json_encode($data),
     ), WATCHDOG_INFO);
+  }
+}
+
+/**
+ * Implements hook_stripe_webhook_TYPE() for checkout.session.completed.
+ *
+ * Completes webform payments when the user does not return to the site. The
+ * session is re-read from the Stripe API, so the event body is not trusted.
+ */
+function stripe_stripe_webhook_checkout_session_completed($data, $event = NULL) {
+  if (empty($data->object->metadata->nid) || empty($data->object->metadata->sid) || empty($data->object->id)) {
+    return;
+  }
+  $node = node_load((int) $data->object->metadata->nid);
+  if ($node && !empty($node->webform)) {
+    module_load_include('inc', 'stripe', 'stripe.webform');
+    _stripe_webform_complete_session($node, (int) $data->object->metadata->sid, $data->object->id);
   }
 }
 
