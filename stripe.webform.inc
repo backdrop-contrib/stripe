@@ -880,21 +880,13 @@ function _webform_render_stripe($component, $value = NULL, $filter = TRUE, $subm
     );
   }
 
-  // At this point, this is a hidden field intended to store the Stripe token
-  // and email. After saving, it will store the Stripe charge ID.
-  $element = array(
-    '#type' => 'hidden',
-    '#attributes' => array('class' => array('webform-stripe-token')),
-    '#theme_wrappers' => array('webform_element'),
-    '#weight' => $component['weight'],
-    '#attached' => array(
-      'js' => array(
-        STRIPE_API_CHECKOUT_JS => array('type' => 'external'),
-        backdrop_get_path('module', 'stripe') . '/js/webform.js',
-      ),
-    ),
+  // Payment is taken on Stripe's hosted Checkout page after the submission is
+  // saved, so nothing is collected on the form itself.
+  return array(
+    '#type' => 'value',
+    '#value' => '',
+    '#stripe_webform' => TRUE,
   );
-  return $element;
 }
 
 /**
@@ -918,45 +910,18 @@ function _stripe_form_webform_client_form_alter(&$form, &$form_state) {
   // Look for a Stripe payment component on a form that has a Submit button.
   foreach ($form['#node']->webform['components'] as $cid => $component) {
     if ($component['type'] === 'stripe' && isset($form['actions']['submit'])) {
-      // New submission, or editing submission without a payment.
-      if (empty($form['#submission']) || empty($form['#submission']->data[$cid][0])) {
+      // New submissions only. Editing a saved submission (for example by an
+      // administrator) never starts a payment.
+      if (empty($form['#submission'])) {
         // Store component for easy access in our submit callback.
         $form['#webform_stripe'] = $component;
 
-        // Wrap form.
-        $form['#webform_stripe_html_id'] = backdrop_html_id('webform-stripe-form');
-        $form['#prefix'] = '<div id="' . $form['#webform_stripe_html_id'] . '">';
-        $form['#suffix'] = '</div>';
-
-        // Add class to form to help Backdrop.ajax.prototype.beforeSubmit().
-        $form['#attributes']['class'][] = 'webform-stripe-form';
-
-        // Replace Webform's submit callback with our own.
+        // Run Webform's own submit, then send the user to Stripe Checkout.
         $key = array_search('webform_client_form_submit', $form['#submit']);
-        $form['#submit'][$key] = '_stripe_process_token';
+        $form['#submit'][$key] = '_stripe_webform_checkout_submit';
 
-        // Creating; set default submit button text and attach ajax.
-        if (empty($form['#submission'])) {
-          if (empty($form['#node']->webform['submit_text'])) {
-            $form['actions']['submit']['#value'] = STRIPE_PAY_TEXT;
-          }
-          $form['actions']['submit']['#ajax'] = array(
-            'callback' => "stripe_webform_client_form_ajax_callback",
-            'wrapper' => $form['#webform_stripe_html_id'],
-          );
-        }
-
-        // Editing; add ajax button to save and pay.
-        else {
-          $form['actions']['stripe'] = array(
-            '#type' => 'submit',
-            '#value' => t('Save and Pay'),
-            '#weight' => 15,
-            '#ajax' => array(
-              'callback' => "stripe_webform_client_form_ajax_callback",
-              'wrapper' => $form['#webform_stripe_html_id'],
-            ),
-          );
+        if (empty($form['#node']->webform['submit_text'])) {
+          $form['actions']['submit']['#value'] = STRIPE_PAY_TEXT;
         }
       }
 
@@ -964,47 +929,6 @@ function _stripe_form_webform_client_form_alter(&$form, &$form_state) {
       break;
     }
   }
-}
-
-/**
- * Webform ajax callback.
- */
-function stripe_webform_client_form_ajax_callback($form, $form_state) {
-  // Validate form.
-  backdrop_validate_form($form['#form_id'], $form, $form_state);
-
-  // Form has errors; show errors and scroll to top of form.
-  if (form_get_errors()) {
-    $commands = ajax_prepare_response($form);
-    $commands[] = array(
-      'command' => 'webformStripeScroll',
-      'selector' => '#' . $form['#webform_stripe_html_id'],
-    );
-    $commands[] = array(
-      '#type' => 'ajax',
-      '#commands' => array(
-        array(
-          'command' => 'webformStripeScroll',
-          'selector' => '#' . $form['#webform_stripe_html_id'],
-        ),
-        ajax_command_alert('error'),
-      ),
-    );
-  }
-
-  // No errors; open Stripe Checkout.
-  else {
-    $commands[] = array(
-      'command' => 'webformStripeCheckout',
-      'params' => stripe_process_checkout_settings($form['#webform_stripe'], $form_state['values']['submitted'], STRIPE_SETTINGS_CHECKOUT),
-    );
-  }
-
-  // Return ajax response.
-  return array(
-    '#type' => 'ajax',
-    '#commands' => $commands,
-  );
 }
 
 /**
@@ -1239,117 +1163,21 @@ function _stripe_process_dynamic_value($type, $component, $data) {
 }
 
 /**
- * Webform submit callback which processes a Stripe token.
- */
-function _stripe_process_token(&$form, &$form_state) {
-  $component = $form['#webform_stripe'];
-  $value = $form_state['values']['submitted'][$component['cid']];
-  $sid = $form_state['values']['details']['sid'];
-
-  // Nothing to process if we don't have a Stripe token.
-  if (substr($value, 0, 4) !== 'tok_') {
-    return;
-  }
-
-  // Process settings.
-  $settings = stripe_process_checkout_settings($component, $form_state['values']['submitted'], STRIPE_SETTINGS_PROCESS);
-
-  // Parse Stripe token and email.
-  list($token, $email) = explode(':', $value);
-
-  // Include Stripe library.
-  stripe_load_library();
-
-  // Set secret key.
-  if ($component['extra']['test_mode']) {
-    $secret_key = stripe_get_secret_key('test');
-  }
-  else {
-    $secret_key = stripe_get_secret_key();
-  }
-
-  \Stripe\Stripe::setApiKey($secret_key);
-
-  try {
-    // Create a subscription, and save the customer and subscription IDs.
-    if (!empty($settings['plan'])) {
-      $customer = \Stripe\Customer::create(array(
-        'email' => $email,
-        'source' => $token,
-      ));
-      $subscription = \Stripe\Subscription::create(array(
-        'customer' => $customer->id,
-        'items' => array(
-          array(
-            'plan' => $settings['plan'],
-            'quantity' => $settings['plan_quantity'],
-          ),
-        ),
-      ));
-      $value = array(
-        'test' => $component['extra']['test_mode'],
-        'customer' => $customer->id,
-        'subscription' => $subscription->id,
-        'plan' => $settings['plan'],
-        'quantity' => $settings['plan_quantity'],
-      );
-    }
-
-    // Charge a one-time amount, and save the charge ID, amount, and currency.
-    else {
-      $charge = \Stripe\Charge::create(array(
-        'source' => $token,
-        'amount' => $settings['amount'],
-        'description' => !empty($settings['description']) ? $settings['description'] : '',
-        'currency' => $settings['currency'],
-        'receipt_email' => $settings['email_receipt'] ? $email : NULL,
-      ));
-      $value = array(
-        'test' => $component['extra']['test_mode'],
-        'charge' => $charge->id,
-        'amount' => $charge->amount,
-        'currency' => $settings['currency'],
-      );
-    }
-
-    // Update submission data.
-    $form_state['values']['submitted'][$component['cid']] = serialize($value);
-
-    // Charge was successful, so continue with saving the submission.
-    webform_client_form_submit($form, $form_state);
-
-    // Now that the submission has been saved, we have a submission ID and can
-    // update the Subscription's or Charge's metadata with a link to the
-    // submission, in addition to any custom metadata set in
-    // hook_webform_stripe_checkout_settings_alter().
-    $settings['metadata']['submission_url'] = url("node/{$component['nid']}/submission/{$form_state['values']['details']['sid']}", array('absolute' => TRUE));
-    if (isset($subscription)) {
-      \Stripe\Subscription::update($subscription->id, array(
-        'metadata' => $settings['metadata'],
-      ));
-    }
-    else if (isset($charge)) {
-      \Stripe\Charge::update($charge->id, array(
-        'metadata' => $settings['metadata'],
-      ));
-    }
-  }
-
-  // Transaction failed.
-  catch(\Stripe\Error\Base $e) {
-    backdrop_set_message(t('The payment was unsuccessful: %message', array(
-      '%message' => $e->getMessage(),
-    )), 'error');
-    $form_state['rebuild'] = TRUE;
-  }
-}
-
-/**
  * Implements _webform_display_component().
  */
 function _webform_display_stripe($component, $value, $format = 'html') {
   if (isset($value[0]) && !empty($value[0]) && substr($value[0], 0, 4) !== 'tok_') {
     $data = unserialize($value[0]);
+    if (is_array($data) && !empty($data['status']) && $data['status'] === 'pending') {
+      return array(
+        '#type' => 'markup',
+        '#title' => $component['name'],
+        '#markup' => t('pending'),
+        '#weight' => $component['weight'],
+        '#theme_wrappers' => $format == 'html' ? array('webform_element') : array('webform_element_text'),
+        '#translatable' => array('title'),
+      );
+    }
     if (is_array($data)) {
       $link = user_access('administer webform stripe') && $format === 'html';
       $text = isset($data['charge'])
@@ -1375,6 +1203,9 @@ function _webform_display_stripe($component, $value, $format = 'html') {
 function _webform_table_stripe($component, $value) {
   if (isset($value[0]) && !empty($value[0]) && substr($value[0], 0, 4) !== 'tok_') {
     $data = unserialize($value[0]);
+    if (is_array($data) && !empty($data['status']) && $data['status'] === 'pending') {
+      return t('pending');
+    }
     if (is_array($data)) {
       return isset($data['charge'])
         ? (!empty($data['amount']) ? stripe_format_amount($data['amount'], $data['currency']) : t('paid'))
@@ -1432,4 +1263,223 @@ function _stripe_get_plans($test_mode) {
   }
 
   return $plans;
+}
+
+/**
+ * Webform submit callback: saves the submission, then starts Stripe Checkout.
+ */
+function _stripe_webform_checkout_submit(&$form, &$form_state) {
+  // Let Webform save the submission and work out its own redirect first.
+  webform_client_form_submit($form, $form_state);
+
+  // Drafts and intermediate pages are not paid for.
+  if (!empty($form_state['save_draft']) || empty($form_state['webform_completed'])) {
+    return;
+  }
+
+  $component = $form['#webform_stripe'];
+  $node = $form['#node'];
+  $sid = (int) $form_state['values']['details']['sid'];
+  if (!$sid) {
+    return;
+  }
+
+  $settings = stripe_process_checkout_settings($component, $form_state['values']['submitted'], STRIPE_SETTINGS_PROCESS);
+  if (empty($settings['plan']) && empty($settings['amount'])) {
+    // Nothing to pay.
+    return;
+  }
+
+  stripe_load_library();
+  \Stripe\Stripe::setApiKey(stripe_get_secret_key($component['extra']['test_mode'] ? 'test' : ''));
+
+  $metadata = array(
+    'nid' => $node->nid,
+    'sid' => $sid,
+    'submission_url' => url("node/{$node->nid}/submission/$sid", array('absolute' => TRUE)),
+  );
+  $description = !empty($settings['description']) ? $settings['description'] : $node->title;
+  $params = array(
+    'client_reference_id' => $node->nid . '-' . $sid,
+    // {CHECKOUT_SESSION_ID} is replaced by Stripe, so it must not be encoded.
+    'success_url' => url("stripe/webform/return/{$node->nid}/$sid", array('absolute' => TRUE)) . '?session_id={CHECKOUT_SESSION_ID}',
+    'cancel_url' => url("node/{$node->nid}", array('absolute' => TRUE)),
+    'metadata' => $metadata,
+  );
+  if (!empty($settings['email'])) {
+    $params['customer_email'] = $settings['email'];
+  }
+
+  if (!empty($settings['plan'])) {
+    $params['mode'] = 'subscription';
+    $params['line_items'] = array(array(
+      'price' => $settings['plan'],
+      'quantity' => !empty($settings['plan_quantity']) ? (int) $settings['plan_quantity'] : 1,
+    ));
+    $params['subscription_data'] = array('metadata' => $metadata);
+  }
+  else {
+    $params['mode'] = 'payment';
+    $params['line_items'] = array(array(
+      'price_data' => array(
+        'currency' => strtolower($settings['currency']),
+        'unit_amount' => (int) $settings['amount'],
+        'product_data' => array('name' => $description),
+      ),
+      'quantity' => 1,
+    ));
+    $params['payment_intent_data'] = array(
+      'description' => $description,
+      'metadata' => $metadata,
+    );
+    if (!empty($settings['email']) && !empty($settings['email_receipt'])) {
+      $params['payment_intent_data']['receipt_email'] = $settings['email'];
+    }
+  }
+
+  try {
+    $session = \Stripe\Checkout\Session::create($params);
+  }
+  catch (Exception $e) {
+    watchdog('stripe', 'Could not start Stripe Checkout for submission @sid: @message', array('@sid' => $sid, '@message' => $e->getMessage()), WATCHDOG_ERROR);
+    backdrop_set_message(t('Your form was saved, but the payment could not be started. Please contact us to pay.'), 'error');
+    return;
+  }
+
+  // Record the pending payment against the submission.
+  _stripe_webform_set_value($node, $sid, $component['cid'], array(
+    'test' => $component['extra']['test_mode'],
+    'session' => $session->id,
+    'status' => 'pending',
+  ));
+
+  // Remember where Webform wanted to go, for when the user comes back.
+  $_SESSION['stripe_webform_redirect'][$sid] = $form_state['redirect'];
+  $form_state['redirect'] = $session->url;
+}
+
+/**
+ * Stores a Stripe component value on a saved submission.
+ */
+function _stripe_webform_set_value($node, $sid, $cid, array $value) {
+  module_load_include('inc', 'webform', 'includes/webform.submissions');
+  $submission = webform_get_submission($node->nid, $sid);
+  if (!$submission) {
+    return FALSE;
+  }
+  $submission->data[$cid] = array(serialize($value));
+  webform_submission_update($node, $submission);
+  return TRUE;
+}
+
+/**
+ * Finds the Stripe component on a webform node.
+ */
+function _stripe_webform_get_component($node) {
+  if (!empty($node->webform['components'])) {
+    foreach ($node->webform['components'] as $component) {
+      if ($component['type'] === 'stripe') {
+        return $component;
+      }
+    }
+  }
+  return NULL;
+}
+
+/**
+ * Verifies a Checkout Session with Stripe and marks the submission paid.
+ *
+ * The session is retrieved from the Stripe API, never trusted from the
+ * request, and must be the one stored on this submission.
+ *
+ * @return bool
+ *   TRUE if the submission is (now) marked as paid.
+ */
+function _stripe_webform_complete_session($node, $sid, $session_id) {
+  module_load_include('inc', 'webform', 'includes/webform.submissions');
+  $component = _stripe_webform_get_component($node);
+  $submission = webform_get_submission($node->nid, $sid);
+  if (!$component || !$submission || empty($submission->data[$component['cid']][0])) {
+    return FALSE;
+  }
+  $stored = @unserialize($submission->data[$component['cid']][0], array('allowed_classes' => FALSE));
+  if (!is_array($stored)) {
+    return FALSE;
+  }
+  // Already completed (for example by the webhook).
+  if (empty($stored['status']) || $stored['status'] !== 'pending') {
+    return isset($stored['charge']) || isset($stored['subscription']);
+  }
+  if (empty($stored['session']) || !hash_equals($stored['session'], (string) $session_id)) {
+    return FALSE;
+  }
+
+  stripe_load_library();
+  \Stripe\Stripe::setApiKey(stripe_get_secret_key(!empty($stored['test']) ? 'test' : ''));
+  try {
+    $session = \Stripe\Checkout\Session::retrieve($stored['session']);
+  }
+  catch (Exception $e) {
+    watchdog('stripe', 'Could not retrieve Checkout Session @id: @message', array('@id' => $stored['session'], '@message' => $e->getMessage()), WATCHDOG_ERROR);
+    return FALSE;
+  }
+
+  if ($session->client_reference_id !== $node->nid . '-' . $sid || $session->status !== 'complete') {
+    return FALSE;
+  }
+
+  if ($session->mode === 'subscription') {
+    if (!in_array($session->payment_status, array('paid', 'no_payment_required'), TRUE)) {
+      return FALSE;
+    }
+    $value = array(
+      'test' => !empty($stored['test']),
+      'customer' => $session->customer,
+      'subscription' => $session->subscription,
+    );
+  }
+  else {
+    if ($session->payment_status !== 'paid') {
+      return FALSE;
+    }
+    $value = array(
+      'test' => !empty($stored['test']),
+      'charge' => $session->payment_intent,
+      'amount' => $session->amount_total,
+      'currency' => $session->currency,
+    );
+  }
+
+  return _stripe_webform_set_value($node, $sid, $component['cid'], $value);
+}
+
+/**
+ * Access callback for the Checkout return page.
+ */
+function _stripe_webform_return_access($node, $sid) {
+  module_load_include('inc', 'webform', 'includes/webform.submissions');
+  $submission = webform_get_submission($node->nid, (int) $sid);
+  return $submission && webform_submission_access($node, $submission, 'view');
+}
+
+/**
+ * Page callback: the user has returned from Stripe Checkout.
+ */
+function stripe_webform_checkout_return($node, $sid) {
+  $sid = (int) $sid;
+  $session_id = isset($_GET['session_id']) ? $_GET['session_id'] : '';
+
+  if (_stripe_webform_complete_session($node, $sid, $session_id)) {
+    backdrop_set_message(t('Thank you, your payment has been received.'));
+  }
+  else {
+    backdrop_set_message(t('We could not confirm your payment. If you have been charged, please contact us.'), 'error');
+  }
+
+  $redirect = isset($_SESSION['stripe_webform_redirect'][$sid]) ? $_SESSION['stripe_webform_redirect'][$sid] : "node/{$node->nid}";
+  unset($_SESSION['stripe_webform_redirect'][$sid]);
+  if (is_array($redirect)) {
+    backdrop_goto($redirect[0], isset($redirect[1]) ? $redirect[1] : array());
+  }
+  backdrop_goto($redirect ? $redirect : "node/{$node->nid}");
 }
