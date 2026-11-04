@@ -4,7 +4,9 @@
  * Contains hook and methods for the Stripe API module.
  */
 
-// Define the checkout javascript location.
+// Legacy Stripe Checkout (checkout.js) location. No longer used: webform
+// payments use hosted Checkout Sessions. Kept for backward compatibility.
+// @deprecated
 define('STRIPE_API_CHECKOUT_JS', 'https://checkout.stripe.com/checkout.js');
 
  // Default button texts.
