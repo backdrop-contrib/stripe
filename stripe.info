@@ -5,8 +5,3 @@ backdrop = 1.x
 package = Stripe
 
 configure = admin/config/services/stripe
-
-; Added by Backdrop CMS packaging script on 2026-06-24
-project = stripe
-version = 1.x-2.1.2
-timestamp = 1782314729
