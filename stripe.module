@@ -83,29 +83,98 @@ function stripe_menu() {
  * Page callback: Processes incoming Stripe webhooks.
  */
 function stripe_incoming_webhook() {
-  $input = file_get_contents("php://input");
-  $event_json = json_decode($input);
+  // Webhooks are always POSTed by Stripe.
+  if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    _stripe_webhook_reject('405 Method Not Allowed', 'Method Not Allowed');
+  }
+
+  $payload = file_get_contents('php://input');
+  $event = stripe_verify_webhook_event($payload, $_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '');
+  if (!$event) {
+    _stripe_webhook_reject('400 Bad Request', 'Invalid webhook event');
+  }
+
+  // Invoke webhooks for others to use. Only the verified event's data is
+  // passed on, never the raw request body.
+  module_invoke_all('stripe_webhook', $event->type, $event->data, $event);
+  module_invoke_all('stripe_webhook_' . str_replace('.', '_', $event->type), $event->data, $event);
+  print 'okay';
+  // End the request here, so a full HTML page is not appended to the response.
+  backdrop_exit();
+}
+
+/**
+ * Verifies an incoming webhook request and returns the Stripe Event.
+ *
+ * If a webhook signing secret is configured for the current mode, the
+ * Stripe-Signature header is verified against it (recommended). Otherwise the
+ * event is retrieved from the Stripe API by its ID, so only events that exist
+ * in the Stripe account are accepted, and only Stripe's copy of the data is
+ * used. In both cases the event's livemode must match the current mode.
+ *
+ * @param string $payload
+ *   The raw request body.
+ * @param string $signature_header
+ *   The value of the Stripe-Signature request header.
+ *
+ * @return Stripe\Event|null
+ *   The verified event, or NULL if the request could not be verified.
+ */
+function stripe_verify_webhook_event($payload, $signature_header) {
+  module_load_include('inc', 'stripe', 'stripe.methods');
+  stripe_load_library();
+
+  $mode = config_get('stripe.settings', 'mode');
+  $secret = config_get('stripe_secret.settings', $mode . '_webhook_secret');
   $event = NULL;
-  // Validate the webhook if we are in LIVE mode.
-  if (config_get('stripe.settings', 'mode') === 'live' && ($event_json->livemode == TRUE || $event_json->id !== 'evt_00000000000000')) {
+
+  if (!empty($secret)) {
+    try {
+      $event = \Stripe\Webhook::constructEvent($payload, $signature_header, $secret);
+    }
+    catch (\Exception $e) {
+      watchdog('stripe', 'Webhook signature verification failed: @error', array(
+        '@error' => $e->getMessage(),
+      ), WATCHDOG_WARNING);
+      return NULL;
+    }
+  }
+  else {
+    // No signing secret: fall back to fetching the event from Stripe.
+    $event_json = json_decode($payload);
+    if (!is_object($event_json) || empty($event_json->id) || !is_string($event_json->id)
+        || strpos($event_json->id, 'evt_') !== 0) {
+      watchdog('stripe', 'Invalid webhook payload received.', array(), WATCHDOG_WARNING);
+      return NULL;
+    }
     $event = stripe_api_call('event', 'retrieve', $event_json->id);
     if (!$event) {
-      watchdog('stripe', 'Invalid webhook event: @data', array(
-        '@data' => $input,
-      ), WATCHDOG_ERROR);
-      // This webhook event is invalid.
-      backdrop_add_http_header('Status', '403 Forbidden');
-      print 'Forbidden';
-      exit;
+      watchdog('stripe', 'Webhook event @id could not be retrieved from Stripe.', array(
+        '@id' => $event_json->id,
+      ), WATCHDOG_WARNING);
+      return NULL;
     }
   }
 
-  // Invoke webhooks for others to use.
-  if (isset($event_json)) {
-    module_invoke_all('stripe_webhook', $event_json->type, $event_json->data, $event);
-    module_invoke_all('stripe_webhook_' . str_replace('.', '_', $event_json->type), $event_json->data, $event);
+  // Never accept test events in live mode, or live events in test mode.
+  if ((bool) $event->livemode !== ($mode === 'live')) {
+    watchdog('stripe', 'Webhook event @id ignored: its livemode does not match the current Stripe mode (@mode).', array(
+      '@id' => $event->id,
+      '@mode' => $mode,
+    ), WATCHDOG_WARNING);
+    return NULL;
   }
-  print 'okay';
+
+  return $event;
+}
+
+/**
+ * Ends a rejected webhook request with an HTTP error status.
+ */
+function _stripe_webhook_reject($status, $message) {
+  backdrop_add_http_header('Status', $status);
+  print $message;
+  backdrop_exit();
 }
 
 /**

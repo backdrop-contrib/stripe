@@ -59,6 +59,19 @@ function stripe_admin_settings_form($form, $form_state) {
     )),
   );
 
+  $form['api']['test_webhook_secret'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Test Webhook Signing Secret'),
+    '#default_value' => $secretconfig->get('test_webhook_secret'),
+    '#description' => t('The signing secret (whsec_...) of the test-mode webhook endpoint. Recommended: when set, incoming webhooks are verified by their signature. When empty, each event is instead retrieved from the Stripe API to confirm it is genuine.'),
+  );
+  $form['api']['live_webhook_secret'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Live Webhook Signing Secret'),
+    '#default_value' => $secretconfig->get('live_webhook_secret'),
+    '#description' => t('The signing secret (whsec_...) of the live-mode webhook endpoint.'),
+  );
+
   $form['api']['log_webhooks'] = array(
     '#type' => 'checkbox',
     '#title' => t('Log incoming webhooks'),
@@ -247,6 +260,8 @@ function stripe_admin_settings_form_submit($form, &$form_state) {
 
   $secretconfig->set('test_secret_key', $values['test_secret_key']);
   $secretconfig->set('live_secret_key', $values['live_secret_key']);
+  $secretconfig->set('test_webhook_secret', $values['test_webhook_secret']);
+  $secretconfig->set('live_webhook_secret', $values['live_webhook_secret']);
   $secretconfig->save();
 
   backdrop_set_message(t('Stripe API settings have been saved.'));

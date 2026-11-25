@@ -60,6 +60,29 @@ $customer->delete();
 $list = stripe_api_call('customer', 'all', array('limit' => 5));
 ```
 
+### Webhooks
+
+Add the webhook URL shown on the settings page (`/stripe/webhook`) as an
+endpoint in the Stripe Dashboard, then copy that endpoint's **signing secret**
+(`whsec_...`) into the matching *Webhook Signing Secret* field (test or live).
+
+Every incoming webhook is verified before any hooks are invoked:
+
+- If a signing secret is set for the current mode, the `Stripe-Signature`
+  header is verified (recommended).
+- Otherwise, the event is retrieved from the Stripe API by its ID, and only
+  Stripe's copy of the event is used.
+- Events whose live/test mode does not match the site's current mode are
+  rejected.
+
+Requests that cannot be verified receive an HTTP 400 response, and nothing is
+invoked. Secrets can also be set in `settings.php`, which keeps them out of
+exported config:
+
+```php
+$config['stripe_secret.settings']['live_webhook_secret'] = 'whsec_...';
+```
+
 This module provides a secure Stripe webhook (events are validated) and provides
 two hooks for you to implement in your custom module. See stripe.api.php for API
 documentation.

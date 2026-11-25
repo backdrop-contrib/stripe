@@ -6,13 +6,14 @@
 /**
  * Interact with all incoming Stripe webhooks.
  *
+ * Only verified events are passed on: see stripe_verify_webhook_event().
+ *
  * @param string $type
  *   Webhook type, such as customer.created, charge.captured, etc.
- * @param object $data
- *   Incoming data object.
+ * @param Stripe\StripeObject $data
+ *   The verified event's data ($event->data).
  * @param Stripe\Event $event
  *   The verified Stripe Event that is being sent.
- *   Only available in live mode with real events (not test events).
  *
  * @throws \Exception
  */
@@ -34,11 +35,10 @@ function hook_stripe_webhook($type, $data, Stripe\Event $event = NULL) {
 /**
  * Interact with a specific incoming webhook type.
  *
- * @param object $data
- *   Incoming data object.
+ * @param Stripe\StripeObject $data
+ *   The verified event's data ($event->data).
  * @param Stripe\Event $event
  *   The verified Stripe Event that is being sent.
- *   Only available in live mode with real events (not test events).
  *
  * @throws \Exception
  */
